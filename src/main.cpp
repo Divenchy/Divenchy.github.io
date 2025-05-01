@@ -1,18 +1,4 @@
 #include "glm/matrix.hpp"
-#include <cassert>
-#include <cstring>
-#include <memory>
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include <iostream>
-
-#define GLEW_STATIC
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -26,6 +12,8 @@
 #include "Program.h"
 #include "Shape.h"
 #include "Routines.h"
+#include "Structure.h"
+#include "Wall.h"
 // clang-format on
 
 using namespace std;
@@ -59,6 +47,8 @@ shared_ptr<Shape> frustrum;
 
 // Shapes
 shared_ptr<Shape> bullet;
+shared_ptr<Shape> cubeMesh;
+shared_ptr<Structure> wall;
 
 // HUD
 shared_ptr<Shape> hudBunny;
@@ -72,7 +62,8 @@ std::vector<shared_ptr<Program>> programs;
 std::vector<shared_ptr<Material>> materials;
 std::vector<shared_ptr<Light>> lights;
 
-std::shared_ptr<Light> lightSource = std::make_shared<Light>(glm::vec3(0.0f, 20.0f, -30.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+std::shared_ptr<Light> lightSource = std::make_shared<Light>(
+    glm::vec3(0.0f, 20.0f, -30.0f), glm::vec3(1.0f, 1.0f, 1.0f));
 
 glm::vec3 ka;
 glm::vec3 kd;
@@ -95,17 +86,21 @@ bool enableTopDown = false;
 bool keyToggles[256] = {false}; // only for English keyboards!
 
 // This function is called when a GLFW error occurs
-static void error_callback(int error, const char *description) { cerr << description << endl; }
+static void error_callback(int error, const char *description) {
+  cerr << description << endl;
+}
 
 // This function is called when a key is pressed
-static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+static void key_callback(GLFWwindow *window, int key, int scancode, int action,
+                         int mods) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GL_TRUE);
   }
 }
 
 // This function is called when the mouse is clicked
-static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+static void mouse_button_callback(GLFWwindow *window, int button, int action,
+                                  int mods) {
   // Get the current mouse position.
   double xmouse, ymouse;
   glfwGetCursorPos(window, &xmouse, &ymouse);
@@ -121,7 +116,8 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 }
 
 // This function is called when the mouse moves
-static void cursor_position_callback(GLFWwindow *window, double xmouse, double ymouse) {
+static void cursor_position_callback(GLFWwindow *window, double xmouse,
+                                     double ymouse) {
   // For click and look
   int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
   if (state == GLFW_PRESS) {
@@ -164,27 +160,8 @@ void musicToggle() {
 }
 
 // If the window is resized, capture the new size and reset the viewport
-static void resize_callback(GLFWwindow *window, int width, int height) { glViewport(0, 0, width, height); }
-
-// https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
-static void saveImage(const char *filepath, GLFWwindow *w) {
-  int width, height;
-  glfwGetFramebufferSize(w, &width, &height);
-  GLsizei nrChannels = 3;
-  GLsizei stride = nrChannels * width;
-  stride += (stride % 4) ? (4 - stride % 4) : 0;
-  GLsizei bufferSize = stride * height;
-  std::vector<char> buffer(bufferSize);
-  glPixelStorei(GL_PACK_ALIGNMENT, 4);
-  glReadBuffer(GL_BACK);
-  glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
-  stbi_flip_vertically_on_write(true);
-  int rc = stbi_write_png(filepath, width, height, nrChannels, buffer.data(), stride);
-  if (rc) {
-    cout << "Wrote to " << filepath << endl;
-  } else {
-    cout << "Couldn't write to " << filepath << endl;
-  }
+static void resize_callback(GLFWwindow *window, int width, int height) {
+  glViewport(0, 0, width, height);
 }
 
 // This function is called once to initialize the scene and OpenGL
@@ -220,9 +197,18 @@ static void init() {
   hudTeapot->loadMesh(RESOURCE_DIR + "teapot.obj");
   hudTeapot->init();
 
+  // Game Elements
+  cubeMesh = make_shared<Shape>();
+  cubeMesh->loadMesh(RESOURCE_DIR + "cube.obj");
+  cubeMesh->init();
+  cubeMesh->setType(ShapeType::CUBE);
+
   bullet = make_shared<Shape>();
   bullet->loadMesh(RESOURCE_DIR + "sphere.obj");
   bullet->init();
+
+  // Create structure
+  wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(0.0f, 0.0f, 0.0f));
 
   GLSL::checkError(GET_FILE_LINE);
 }
@@ -282,17 +268,22 @@ static void render() {
 
   centerCam(MV);
 
-  glm::vec4 lightPosCamSpace = MV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
+  glm::vec4 lightPosCamSpace =
+      MV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
 
   shaderIndex = 3;
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
 
   activeProg->bind();
-  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
-  glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE, glm::value_ptr(T));
-  glUniform3fv(activeProg->getUniform("lightPos"), 1, glm::value_ptr(lightPosCamSpace));
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
+  glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
+                     glm::value_ptr(T));
+  glUniform3fv(activeProg->getUniform("lightPos"), 1,
+               glm::value_ptr(lightPosCamSpace));
   glUniform1i(activeProg->getUniform("useCloudTexture"), 0);
 
   drawGrid(activeProg, P, MV);
@@ -304,20 +295,27 @@ static void render() {
   activeProg = programs[shaderIndex];
   activeProg->bind();
   // Back to original shader
-  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
 
   // Set light position uniform on the active program
-  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x, lightPosCamSpace.y, lightPosCamSpace.z);
+  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x,
+              lightPosCamSpace.y, lightPosCamSpace.z);
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x, activeMaterial->getMaterialKA().y,
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
+              activeMaterial->getMaterialKA().y,
               activeMaterial->getMaterialKA().z);
-  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x, activeMaterial->getMaterialKD().y,
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
               activeMaterial->getMaterialKD().z);
-  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x, activeMaterial->getMaterialKS().y,
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  wall->renderStructure(activeProg);
 
   activeProg->unbind();
 
@@ -327,25 +325,33 @@ static void render() {
   // HUD Rendering (Help from ChatGPT)
   HUDP->pushMatrix();
   float fovy = glm::radians(45.0f);
-  HUDP->multMatrix(glm::perspective(fovy, (float)width / (float)height, 0.1f, 100.0f)); // Projection
+  HUDP->multMatrix(glm::perspective(fovy, (float)width / (float)height, 0.1f,
+                                    100.0f)); // Projection
   HUDMV->pushMatrix();
-  HUDMV->multMatrix(glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0))); // ModelView
+  HUDMV->multMatrix(glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0, 0, 0),
+                                glm::vec3(0, 1, 0))); // ModelView
 
   activeProg = programs[2];
   // --- Begin HUD Rendering ---
   activeProg->bind();
-  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE, glm::value_ptr(HUDP->topMatrix()));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(HUDMV->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(HUDP->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(HUDMV->topMatrix()));
 
   // Set light position uniform on the active program
-  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x, lightPosCamSpace.y, lightPosCamSpace.z);
+  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x,
+              lightPosCamSpace.y, lightPosCamSpace.z);
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x, activeMaterial->getMaterialKA().y,
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
+              activeMaterial->getMaterialKA().y,
               activeMaterial->getMaterialKA().z);
-  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x, activeMaterial->getMaterialKD().y,
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
               activeMaterial->getMaterialKD().z);
-  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x, activeMaterial->getMaterialKS().y,
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
 
@@ -367,7 +373,8 @@ static void render() {
   float marginX = -0.9f;
   float marginY = -0.7f;
 
-  // Compute positions in view space (assuming camera at origin, looking down -Z).
+  // Compute positions in view space (assuming camera at origin, looking down
+  // -Z).
   glm::vec3 upperLeftPos(-halfWidth + marginX, halfHeight - marginY, -d);
   glm::vec3 upperRightPos(halfWidth - marginX, halfHeight - marginY, -d);
 
@@ -379,7 +386,8 @@ static void render() {
   HUDMV->translate(upperLeftPos);
   HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
   HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, (&HUDMV->topMatrix()[0][0]));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     (&HUDMV->topMatrix()[0][0]));
   hudBunny->draw(activeProg);
   HUDMV->popMatrix();
 
@@ -390,7 +398,8 @@ static void render() {
   HUDMV->translate(glm::vec3(0.0f, 0.2f, 0.0f));
   HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
   HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, (&HUDMV->topMatrix()[0][0]));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     (&HUDMV->topMatrix()[0][0]));
   hudTeapot->draw(activeProg);
   HUDMV->popMatrix();
 
@@ -421,23 +430,32 @@ static void render() {
 
     // Setup projection and camera
     TOPDOWNP->pushMatrix();
-    TOPDOWNP->multMatrix(glm::ortho(-topDownSize, topDownSize, -topDownSize, topDownSize, 0.1f, 100.0f));
+    TOPDOWNP->multMatrix(glm::ortho(-topDownSize, topDownSize, -topDownSize,
+                                    topDownSize, 0.1f, 100.0f));
     TOPDOWNMV->pushMatrix();
-    TOPDOWNMV->multMatrix(glm::lookAt(glm::vec3(0, 20, 0), // camera position: 30 units above the origin
-                                      glm::vec3(0, 0, 0),  // look at the center of the scene
-                                      glm::vec3(0, 0, -1)  // up vector: chosen to orient the view appropriately
-                                      ));
+    TOPDOWNMV->multMatrix(glm::lookAt(
+        glm::vec3(0, 20, 0), // camera position: 30 units above the origin
+        glm::vec3(0, 0, 0),  // look at the center of the scene
+        glm::vec3(0, 0,
+                  -1) // up vector: chosen to orient the view appropriately
+        ));
 
     // Load P and ModelView onto GPU
     T = glm::mat4(1.0f);
-    glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE, glm::value_ptr(TOPDOWNP->topMatrix()));
-    glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(TOPDOWNMV->topMatrix()));
-    glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE, glm::value_ptr(T));
+    glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                       glm::value_ptr(TOPDOWNP->topMatrix()));
+    glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                       glm::value_ptr(TOPDOWNMV->topMatrix()));
+    glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
+                       glm::value_ptr(T));
 
     // Compute the light position in top-down coordinates:
-    glm::vec4 topDownLightPos = TOPDOWNMV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
-    // glUniform3f(activeProg->getUniform("lightPos"), topDownLightPos.x, topDownLightPos.y, topDownLightPos.z);
-    glUniform3fv(activeProg->getUniform("lightPos"), 1, glm::value_ptr(topDownLightPos));
+    glm::vec4 topDownLightPos =
+        TOPDOWNMV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
+    // glUniform3f(activeProg->getUniform("lightPos"), topDownLightPos.x,
+    // topDownLightPos.y, topDownLightPos.z);
+    glUniform3fv(activeProg->getUniform("lightPos"), 1,
+                 glm::value_ptr(topDownLightPos));
     glUniform1i(activeProg->getUniform("useCloudTexture"), 0);
 
     drawGrid(activeProg, TOPDOWNP, TOPDOWNMV);
@@ -445,7 +463,8 @@ static void render() {
 
     activeProg = programs[0];
     // Draw frustrum
-    drawFrustrum(activeProg, camera, TOPDOWNP, TOPDOWNMV, frustrum, width, height);
+    drawFrustrum(activeProg, camera, TOPDOWNP, TOPDOWNMV, frustrum, width,
+                 height);
 
     TOPDOWNMV->popMatrix();
     TOPDOWNP->popMatrix();

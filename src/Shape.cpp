@@ -4,6 +4,7 @@
 
 #include "GLSL.h"
 #include "Program.h"
+#include "pch.h"
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -23,7 +24,8 @@ void Shape::loadMesh(const string &meshName) {
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
   string warnStr, errStr;
-  bool rc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warnStr, &errStr, meshName.c_str());
+  bool rc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warnStr, &errStr,
+                             meshName.c_str());
   if (!rc) {
     cerr << errStr << endl;
   } else {
@@ -53,7 +55,8 @@ void Shape::loadMesh(const string &meshName) {
             texBuf.push_back(attrib.texcoords[2 * idx.texcoord_index + 0]);
             texBuf.push_back(attrib.texcoords[2 * idx.texcoord_index + 1]);
           } else {
-            // Generate UVs from vertex position (assuming the mesh is roughly in [-1,1])
+            // Generate UVs from vertex position (assuming the mesh is roughly
+            // in [-1,1])
             float x = attrib.vertices[3 * idx.vertex_index + 0];
             float y = attrib.vertices[3 * idx.vertex_index + 1];
             float z = attrib.vertices[3 * idx.vertex_index + 2];
@@ -88,7 +91,8 @@ void Shape::loadMesh(const string &meshName) {
 }
 
 void Shape::fitToUnitBox() {
-  // Scale the vertex positions so that they fit within [-1, +1] in all three dimensions.
+  // Scale the vertex positions so that they fit within [-1, +1] in all three
+  // dimensions.
   glm::vec3 vmin(posBuf[0], posBuf[1], posBuf[2]);
   glm::vec3 vmax(posBuf[0], posBuf[1], posBuf[2]);
   for (int i = 0; i < (int)posBuf.size(); i += 3) {
@@ -114,27 +118,35 @@ void Shape::fitToUnitBox() {
 }
 
 void Shape::init() {
+  // VAO for shape
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+
   // Send the position array to the GPU
   glGenBuffers(1, &posBufID);
   glBindBuffer(GL_ARRAY_BUFFER, posBufID);
-  glBufferData(GL_ARRAY_BUFFER, posBuf.size() * sizeof(float), &posBuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, posBuf.size() * sizeof(float), &posBuf[0],
+               GL_STATIC_DRAW);
 
   // Send the normal array to the GPU
   if (!norBuf.empty()) {
     glGenBuffers(1, &norBufID);
     glBindBuffer(GL_ARRAY_BUFFER, norBufID);
-    glBufferData(GL_ARRAY_BUFFER, norBuf.size() * sizeof(float), &norBuf[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, norBuf.size() * sizeof(float), &norBuf[0],
+                 GL_STATIC_DRAW);
   }
 
   // Send the texture array to the GPU
   if (!texBuf.empty()) {
     glGenBuffers(1, &texBufID);
     glBindBuffer(GL_ARRAY_BUFFER, texBufID);
-    glBufferData(GL_ARRAY_BUFFER, texBuf.size() * sizeof(float), &texBuf[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, texBuf.size() * sizeof(float), &texBuf[0],
+                 GL_STATIC_DRAW);
   }
 
   // Unbind the arrays
   glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 
   GLSL::checkError(GET_FILE_LINE);
 }

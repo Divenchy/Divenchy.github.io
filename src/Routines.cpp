@@ -1,18 +1,22 @@
 #include "Routines.h"
 
-using std::make_shared, std::shared_ptr, std::string, std::vector, glm::vec3, glm::vec4, glm::mat4;
+using std::make_shared, std::shared_ptr, std::string, std::vector, glm::vec3,
+    glm::vec4, glm::mat4;
 
 // Draw grid
 // TODO: BUILDING DIMENSIONS 15m x 5m
-void drawGrid(shared_ptr<Program> &activeProgram, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &MV) {
-  glUniformMatrix4fv(activeProgram->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
-  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+void drawGrid(shared_ptr<Program> &activeProgram, shared_ptr<MatrixStack> &P,
+              shared_ptr<MatrixStack> &MV) {
+  glUniformMatrix4fv(activeProgram->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
   glLineWidth(2.0f);
-  float x0 = -15.0f;
-  float x1 = 15.0f;
-  float z0 = -15.0f;
-  float z1 = 15.0f;
-  int gridSize = 10;
+  float x0 = -100.0f;
+  float x1 = 100.0f;
+  float z0 = -100.0f;
+  float z1 = 100.0f;
+  int gridSize = 100;
   glLineWidth(1.0f);
   glBegin(GL_LINES);
   for (int i = 1; i < gridSize; ++i) {
@@ -46,12 +50,17 @@ void drawGrid(shared_ptr<Program> &activeProgram, shared_ptr<MatrixStack> &P, sh
 }
 
 // Draw frustrum
-void drawFrustrum(std::shared_ptr<Program> &activeProgram, std::shared_ptr<Camera> &camera, std::shared_ptr<MatrixStack> &P,
-                  std::shared_ptr<MatrixStack> &MV, std::shared_ptr<Shape> &frustrum, int width, int height) {
+void drawFrustrum(std::shared_ptr<Program> &activeProgram,
+                  std::shared_ptr<Camera> &camera,
+                  std::shared_ptr<MatrixStack> &P,
+                  std::shared_ptr<MatrixStack> &MV,
+                  std::shared_ptr<Shape> &frustrum, int width, int height) {
 
   activeProgram->bind();
-  glUniformMatrix4fv(activeProgram->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
-  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+  glUniformMatrix4fv(activeProgram->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
   glUniform3f(activeProgram->getUniform("kd"), 1.0f, 0.0f, 0.0f);
 
   // Draw frustrum
@@ -67,16 +76,19 @@ void drawFrustrum(std::shared_ptr<Program> &activeProgram, std::shared_ptr<Camer
   glEnable(GL_DEPTH_TEST);
 
   // Set frustrum FOV
-  float fovy = glm::radians(45.0f); // replace with your current FOV if different
+  float fovy =
+      glm::radians(45.0f); // replace with your current FOV if different
   float aspect = (float)width / (float)height;
-  // The frustum appears correctly only when FOV equals the design FOV. To correct for any difference,
-  // compute scale factors in X and Y. (Here we assume the frustum was modeled for a FOV of 45°.)
+  // The frustum appears correctly only when FOV equals the design FOV. To
+  // correct for any difference, compute scale factors in X and Y. (Here we
+  // assume the frustum was modeled for a FOV of 45°.)
   float scaleX = tan(fovy / 2.0f) * aspect;
   float scaleY = tan(fovy / 2.0f);
   MV->scale(scaleX, scaleY, 1.0f);
 
   // Draw shape
-  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE, &MV->topMatrix()[0][0]);
+  glUniformMatrix4fv(activeProgram->getUniform("MV"), 1, GL_FALSE,
+                     &MV->topMatrix()[0][0]);
   frustrum->draw(activeProgram);
 
   MV->popMatrix();
@@ -90,11 +102,16 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
 
   // Blinn_phong
   std::shared_ptr<Program> blingProg = make_shared<Program>();
-  blingProg->setShaderNames(RESOURCE_DIR + "bling_phong_vert.glsl", RESOURCE_DIR + "bling_phong_frag.glsl");
+  blingProg->setShaderNames(RESOURCE_DIR + "bling_phong_vert.glsl",
+                            RESOURCE_DIR + "bling_phong_frag.glsl");
   blingProg->setVerbose(true);
   blingProg->init();
   blingProg->addAttribute("aPos");
   blingProg->addAttribute("aNor");
+  blingProg->addAttribute("aInstMat0");
+  blingProg->addAttribute("aInstMat1");
+  blingProg->addAttribute("aInstMat2");
+  blingProg->addAttribute("aInstMat3");
   blingProg->addUniform("MV");
   blingProg->addUniform("P");
   blingProg->addUniform("normalMatrix"); // New uniform for transforming normals
@@ -108,7 +125,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
 
   // Default
   std::shared_ptr<Program> prog = make_shared<Program>();
-  prog->setShaderNames(RESOURCE_DIR + "normal_vert.glsl", RESOURCE_DIR + "normal_frag.glsl");
+  prog->setShaderNames(RESOURCE_DIR + "normal_vert.glsl",
+                       RESOURCE_DIR + "normal_frag.glsl");
   prog->setVerbose(true);
   prog->init();
   prog->addAttribute("aPos");
@@ -121,7 +139,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
 
   // HUD Shader
   std::shared_ptr<Program> progHUD = make_shared<Program>();
-  progHUD->setShaderNames(RESOURCE_DIR + "hud_vert.glsl", RESOURCE_DIR + "hud_frag.glsl");
+  progHUD->setShaderNames(RESOURCE_DIR + "hud_vert.glsl",
+                          RESOURCE_DIR + "hud_frag.glsl");
   progHUD->setVerbose(true);
   progHUD->init();
   progHUD->addAttribute("aPos");
@@ -139,7 +158,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
 
   // Imported from lab 9
   std::shared_ptr<Program> progTexture = make_shared<Program>();
-  progTexture->setShaderNames(RESOURCE_DIR + "bling_phong_vert_texture.glsl", RESOURCE_DIR + "bling_phong_frag_texture.glsl");
+  progTexture->setShaderNames(RESOURCE_DIR + "bling_phong_vert_texture.glsl",
+                              RESOURCE_DIR + "bling_phong_frag_texture.glsl");
   progTexture->setVerbose(true);
   progTexture->init();
   progTexture->addAttribute("aPos");
@@ -162,11 +182,14 @@ void createMaterials(std::vector<std::shared_ptr<Material>> &materials) {
   // determines color of shine (specular highlights)
   // Args: ka, kd, ks , s
   shared_ptr<Material> bling_phong =
-      make_shared<Material>(vec3(0.2f, 0.2f, 0.2f), vec3(0.8f, 0.7f, 0.7f), vec3(1.0f, 0.9f, 0.8f), 200.0f);
+      make_shared<Material>(vec3(0.2f, 0.2f, 0.2f), vec3(0.8f, 0.7f, 0.7f),
+                            vec3(1.0f, 0.9f, 0.8f), 200.0f);
   shared_ptr<Material> blue_shiny =
-      make_shared<Material>(vec3(0.0f, 0.0f, 0.1f), vec3(0.1f, 0.2f, 0.8f), vec3(0.0f, 1.0f, 0.2f), 300.0f);
+      make_shared<Material>(vec3(0.0f, 0.0f, 0.1f), vec3(0.1f, 0.2f, 0.8f),
+                            vec3(0.0f, 1.0f, 0.2f), 300.0f);
   shared_ptr<Material> gray_matte =
-      make_shared<Material>(vec3(0.2f, 0.2f, 0.2f), vec3(0.5f, 0.5f, 0.5f), vec3(0.2f, 0.2f, 0.2f), 20.0f);
+      make_shared<Material>(vec3(0.2f, 0.2f, 0.2f), vec3(0.5f, 0.5f, 0.5f),
+                            vec3(0.2f, 0.2f, 0.2f), 20.0f);
 
   materials.push_back(bling_phong);
   materials.push_back(blue_shiny);
@@ -174,10 +197,13 @@ void createMaterials(std::vector<std::shared_ptr<Material>> &materials) {
 }
 
 // Apply transforms to camera/view
-void centerCam(std::shared_ptr<MatrixStack> &MV) { MV->translate(0.0f, -1.0f, 0.0f); }
+void centerCam(std::shared_ptr<MatrixStack> &MV) {
+  MV->translate(0.0f, -1.0f, 0.0f);
+}
 
 // Free-look world
-void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::string RESOURCE_DIR) {
+void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
+                        std::string RESOURCE_DIR) {
 
   // Load meshes once
   shared_ptr<Shape> bunny = make_shared<Shape>();
@@ -216,9 +242,11 @@ void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::stri
       }
 
       // Apply small offset so that it is not straight on grid
-      shared_ptr<Object> obj =
-          make_shared<Object>(shape, vec3(topLeft + (x + randVal * 0.85f), 0.0f, topLeft + z + (randVal * 0.85f)), 0.0f,
-                              glm::quat(), vec3(randVal, randVal, randVal), 0.0f);
+      shared_ptr<Object> obj = make_shared<Object>(
+          shape,
+          vec3(topLeft + (x + randVal * 0.85f), 0.0f,
+               topLeft + z + (randVal * 0.85f)),
+          0.0f, glm::quat(), vec3(randVal, randVal, randVal), 0.0f);
       obj->setFactor(scaleFactor);
 
       objects.push_back(obj);
@@ -226,16 +254,18 @@ void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::stri
   }
 }
 
-void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::shared_ptr<MatrixStack> &P,
-                      std::shared_ptr<MatrixStack> &MV, std::shared_ptr<Program> &activeProgram,
+void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
+                      std::shared_ptr<MatrixStack> &P,
+                      std::shared_ptr<MatrixStack> &MV,
+                      std::shared_ptr<Program> &activeProgram,
                       std::shared_ptr<Material> &activeMaterial, double t) {
   for (size_t i = 0; i < objects.size(); i++) {
 
     shared_ptr<Object> obj = objects[i];
     // Load obj's material here (color)
     shared_ptr<Material> material = obj->getMaterial();
-    glUniform3f(activeProgram->getUniform("kd"), material->getMaterialKD().x, material->getMaterialKD().y,
-                material->getMaterialKD().z);
+    glUniform3f(activeProgram->getUniform("kd"), material->getMaterialKD().x,
+                material->getMaterialKD().y, material->getMaterialKD().z);
 
     // Use t to interpolate values from 0.5 to 1 (oscillating)
     float scaleSet = obj->getFactor() + 0.25f * sin(t + i);
@@ -245,7 +275,9 @@ void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::shared
   }
 }
 
-void texturesBind(std::shared_ptr<Program> &prog, std::shared_ptr<Texture> &texture0, std::shared_ptr<Texture> &texture1,
+void texturesBind(std::shared_ptr<Program> &prog,
+                  std::shared_ptr<Texture> &texture0,
+                  std::shared_ptr<Texture> &texture1,
                   std::shared_ptr<Texture> &texture2) {
 
   texture0->bind(prog->getUniform("texture0"));
@@ -253,7 +285,9 @@ void texturesBind(std::shared_ptr<Program> &prog, std::shared_ptr<Texture> &text
   texture2->bind(prog->getUniform("texture2"));
 }
 
-void texturesUnbind(std::shared_ptr<Program> &prog, std::shared_ptr<Texture> &texture0, std::shared_ptr<Texture> &texture1,
+void texturesUnbind(std::shared_ptr<Program> &prog,
+                    std::shared_ptr<Texture> &texture0,
+                    std::shared_ptr<Texture> &texture1,
                     std::shared_ptr<Texture> &texture2) {
 
   texture0->unbind();

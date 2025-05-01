@@ -9,9 +9,11 @@
 using glm::vec3, glm::vec4, glm::mat4;
 
 Camera::Camera()
-    : aspect(1.0f), fovy((float)(45.0 * M_PI / 180.0)), znear(0.1f), zfar(1000.0f), rotations(0.0, 0.0),
-      translations(0.0f, 0.0f, -5.0f), rfactor(0.01f), tfactor(0.001f), sfactor(0.005f), position(0.0f, 0.2f, 5.0f),
-      yaw(glm::radians(90.0f)), pitch(glm::radians(0.0f)) {} // Yaw at 90 to face -Z
+    : aspect(1.0f), fovy((float)(45.0 * M_PI / 180.0)), znear(0.1f),
+      zfar(1000.0f), rotations(0.0, 0.0), translations(0.0f, 0.0f, -5.0f),
+      rfactor(0.01f), tfactor(0.001f), sfactor(0.005f),
+      position(0.0f, 0.2f, 5.0f), yaw(glm::radians(90.0f)),
+      pitch(glm::radians(0.0f)) {} // Yaw at 90 to face -Z
 
 Camera::~Camera() {}
 
@@ -58,7 +60,8 @@ void Camera::applyViewMatrix(std::shared_ptr<MatrixStack> MV) const {
 
 // Help with ChatGPT
 void Camera::applyViewMatrixFreeLook(std::shared_ptr<MatrixStack> MV) const {
-  vec3 forward = glm::normalize(glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)));
+  vec3 forward = glm::normalize(
+      glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)));
   vec3 up = glm::vec3(0, 1, 0);
   mat4 view = glm::lookAt(position, position + forward, up);
   viewFreeLook = view;
@@ -83,11 +86,12 @@ void Camera::mouseMoveFreeLook(float x, float y) {
 }
 
 void Camera::keyInput(char key, float deltaTime) {
-  float speed = 0.008f; // Adjust speed as needed.
+  float speed = 0.3f; // Adjust speed as needed.
   // Compute the forward direction from yaw and pitch (for viewing)
   glm::vec3 forward =
       glm::normalize(glm::vec3(cos(pitch) * sin(yaw),
-                               0.0f, // Note: For translation, we ignore pitch so that movement stays on the ground.
+                               0.0f, // Note: For translation, we ignore pitch
+                                     // so that movement stays on the ground.
                                cos(pitch) * cos(yaw)));
   // Compute right direction.
   glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));

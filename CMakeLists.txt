@@ -73,8 +73,25 @@ ENDIF()
 INCLUDE_DIRECTORIES(${GLFW_DIR}/include)
 TARGET_LINK_LIBRARIES(${CMAKE_PROJECT_NAME} glfw ${GLFW_LIBRARIES})
 
+find_library(FLAC_LIBRARY NAMES FLAC)
+
+if(NOT FLAC_LIBRARY)
+  message(WARNING "System FLAC not found, falling back to /opt/flac-1.3.2")
+
+  link_directories(/opt/flac-1.3.2/lib)
+  include_directories(/opt/flac-1.3.2/include)
+
+  # Try finding FLAC again
+  find_library(FLAC_LIBRARY NAMES FLAC PATHS /opt/flac-1.3.2/lib)
+endif()
+
+if(NOT FLAC_LIBRARY)
+  message(FATAL_ERROR "FLAC library not found, even after trying fallback!")
+endif()
+
 # Set up SFML library
 SET(SFML3_DIR "$ENV{SFML3_DIR}")
+SET(SFML_DIR ${SFML3_DIR})
 FIND_PACKAGE(SFML 3 COMPONENTS Audio REQUIRED)
 TARGET_LINK_LIBRARIES(${CMAKE_PROJECT_NAME} SFML::Audio)
 
@@ -135,3 +152,5 @@ ELSE()
     TARGET_LINK_LIBRARIES(${CMAKE_PROJECT_NAME} "GL")
   ENDIF()
 ENDIF()
+
+TARGET_PRECOMPILE_HEADERS(${CMAKE_PROJECT_NAME} PRIVATE "src/pch.h")

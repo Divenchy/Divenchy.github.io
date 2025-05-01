@@ -33,10 +33,6 @@ private:
   glm::quat quaternion;
   glm::vec3 scale;
   float scaleFactor;
-  // Shear teapot, to mimic pouring look
-  // glm::mat4 S(1.0f);
-  // S[0][1] = 0.5f * cos(t);
-  // MV->multMatrix(glm::inverse(S));
   glm::mat4 ShearMat;
   float shearFactor;
 
@@ -44,10 +40,12 @@ private:
   std::shared_ptr<Material> material;
 
 public:
-  Object(std::shared_ptr<Shape> mesh, glm::vec3 translation, float rotAngle, glm::quat quaternion, glm::vec3 scale,
-         float shearFactor);
-  void drawObject(int shaderIndex, std::shared_ptr<MatrixStack> &P, std::shared_ptr<MatrixStack> &MV,
-                  std::shared_ptr<Program> &activeProgram, std::shared_ptr<Material> &activeMaterial);
+  Object(std::shared_ptr<Shape> mesh, glm::vec3 translation, float rotAngle,
+         glm::quat quaternion, glm::vec3 scale, float shearFactor);
+  void drawObject(int shaderIndex, std::shared_ptr<MatrixStack> &P,
+                  std::shared_ptr<MatrixStack> &MV,
+                  std::shared_ptr<Program> &activeProgram,
+                  std::shared_ptr<Material> &activeMaterial);
   std::shared_ptr<Material> getMaterial() { return material; }
   void setScale(const glm::vec3 &scale) { this->scale = scale; }
   void setFactor(const float &factor) { this->scaleFactor = factor; }

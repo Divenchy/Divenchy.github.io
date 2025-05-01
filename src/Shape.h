@@ -9,6 +9,7 @@
 
 class Program;
 
+enum class ShapeType { SPHERE, CUBE, BUNNY, TEAPOT };
 /**
  * A shape defined by a list of triangles
  * - posBuf should be of length 3*ntris
@@ -24,16 +25,26 @@ public:
   void fitToUnitBox();
   void init();
   void draw(const std::shared_ptr<Program> prog) const;
-  float getMinY() const;
+  float getMinY() const; // To flush to floor
   glm::vec3 getBaseCenter() const;
+  void setType(ShapeType shapeType) { this->type = shapeType; };
+  ShapeType getType() { return this->type; };
+  // For cube instancing
+  GLuint getVAO() const { return vao; }
+  int getVertexCount() const { return posBuf.size() / 3; }
+  unsigned getPosBufID() { return posBufID; };
+  unsigned getNorBufID() { return norBufID; };
+  unsigned getTexBufID() { return texBufID; };
 
 private:
+  unsigned int vao;
   std::vector<float> posBuf;
   std::vector<float> norBuf;
   std::vector<float> texBuf;
   unsigned posBufID;
   unsigned norBufID;
   unsigned texBufID;
+  ShapeType type;
 };
 
 #endif
