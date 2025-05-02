@@ -152,6 +152,11 @@ void Shape::init() {
 }
 
 void Shape::draw(const shared_ptr<Program> prog) const {
+  // debugging
+  GLint cur = 0;
+  glGetIntegerv(GL_CURRENT_PROGRAM, &cur);
+  assert(cur != 0 && "no program bound in Shape::draw!");
+
   // Bind position buffer
   int h_pos = prog->getAttribute("aPos");
   glEnableVertexAttribArray(h_pos);
@@ -175,8 +180,10 @@ void Shape::draw(const shared_ptr<Program> prog) const {
   }
 
   // Draw
+  glBindVertexArray(vao);        // bind your VAO
   int count = posBuf.size() / 3; // number of indices to be rendered
   glDrawArrays(GL_TRIANGLES, 0, count);
+  glBindVertexArray(0);
 
   // Disable and unbind
   if (h_tex != -1) {

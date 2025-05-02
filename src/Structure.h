@@ -40,7 +40,6 @@ public:
   }
 
   void renderStructure(const std::shared_ptr<Program> prog) {
-    prog->bind();
     glBindVertexArray(cubeMesh->getVAO());
 
     // Bind vetex attribs (aPos and aNor)
@@ -101,7 +100,6 @@ public:
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    prog->unbind();
   };
 
   std::vector<int> collisionSphere(const std::shared_ptr<Shape> sphere);

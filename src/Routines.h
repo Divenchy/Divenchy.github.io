@@ -1,3 +1,5 @@
+#include "BulletManager.h"
+#include "Structure.h"
 #include <cassert>
 #include <cstring>
 #include <memory>
@@ -25,19 +27,215 @@
 #include "Texture.h"
 // clang-format on
 
-void drawGrid(std::shared_ptr<Program> &activeProgram, std::shared_ptr<MatrixStack> &P, std::shared_ptr<MatrixStack> &MV);
-void drawFrustrum(std::shared_ptr<Program> &activeProgram, std::shared_ptr<Camera> &camera, std::shared_ptr<MatrixStack> &P,
-                  std::shared_ptr<MatrixStack> &MV, std::shared_ptr<Shape> &frustrum, int width, int height);
+void drawGrid(std::shared_ptr<Program> &activeProgram,
+              std::shared_ptr<MatrixStack> &P,
+              std::shared_ptr<MatrixStack> &MV);
+void drawFrustrum(std::shared_ptr<Program> &activeProgram,
+                  std::shared_ptr<Camera> &camera,
+                  std::shared_ptr<MatrixStack> &P,
+                  std::shared_ptr<MatrixStack> &MV,
+                  std::shared_ptr<Shape> &frustrum, int width, int height);
 void centerCam(std::shared_ptr<MatrixStack> &MV); // Applies transformation
-void createShaders(std::string RESOURCE_DIR, std::vector<std::shared_ptr<Program>> &programs);
+void createShaders(std::string RESOURCE_DIR,
+                   std::vector<std::shared_ptr<Program>> &programs);
 void createMaterials(std::vector<std::shared_ptr<Material>> &materials);
-void texturesBind(std::shared_ptr<Program> &prog, std::shared_ptr<Texture> &texture0, std::shared_ptr<Texture> &texture1,
+void texturesBind(std::shared_ptr<Program> &prog,
+                  std::shared_ptr<Texture> &texture0,
+                  std::shared_ptr<Texture> &texture1,
                   std::shared_ptr<Texture> &texture2);
-void texturesUnbind(std::shared_ptr<Program> &prog, std::shared_ptr<Texture> &texture0, std::shared_ptr<Texture> &texture1,
+void texturesUnbind(std::shared_ptr<Program> &prog,
+                    std::shared_ptr<Texture> &texture0,
+                    std::shared_ptr<Texture> &texture1,
                     std::shared_ptr<Texture> &texture2);
 
 // Free-look world
-void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::string RESOURCE_DIR);
-void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects, std::shared_ptr<MatrixStack> &P,
-                      std::shared_ptr<MatrixStack> &MV, std::shared_ptr<Program> &activeProgram,
+void createSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
+                        std::string RESOURCE_DIR);
+void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
+                      std::shared_ptr<MatrixStack> &P,
+                      std::shared_ptr<MatrixStack> &MV,
+                      std::shared_ptr<Program> &activeProgram,
                       std::shared_ptr<Material> &activeMaterial, double t);
+
+inline void drawLevel(std::shared_ptr<Program> &activeProg,
+                      std::shared_ptr<MatrixStack> &P,
+                      std::shared_ptr<MatrixStack> &MV,
+                      std::vector<std::shared_ptr<Light>> &lights,
+                      std::shared_ptr<Material> &activeMaterial,
+                      std::vector<std::shared_ptr<Material>> &materials,
+                      std::vector<std::shared_ptr<Structure>> &structures) {
+
+  // Back to original shader
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
+
+  // Set light position uniform on the active program
+  // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
+  glm::mat4 viewMatrix = MV->topMatrix();
+  std::vector<glm::vec3> viewLightPositions, lightColors;
+  viewLightPositions.resize(lights.size());
+  lightColors.resize(lights.size());
+  for (size_t i = 0; i < lights.size(); i++) {
+    // Transform the world-space light position into view space.
+    glm::vec4 viewPos = viewMatrix * glm::vec4(lights[i]->pos, 1.0f);
+    viewLightPositions[i] = glm::vec3(viewPos);
+    lightColors[i] = lights[i]->color;
+  }
+
+  // Now pass the transformed positions to the shader.
+  glUniform3fv(activeProg->getUniform("lightPos"), lights.size(),
+               glm::value_ptr(viewLightPositions[0]));
+  glUniform3fv(activeProg->getUniform("lightColor"), lights.size(),
+               glm::value_ptr(lightColors[0]));
+
+  // Set material uniforms from activeMaterial
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
+              activeMaterial->getMaterialKA().y,
+              activeMaterial->getMaterialKA().z);
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
+              activeMaterial->getMaterialKD().z);
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
+              activeMaterial->getMaterialKS().z);
+  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  MV->pushMatrix();
+  structures[0]->renderStructure(activeProg);
+  MV->popMatrix();
+
+  MV->pushMatrix();
+  MV->rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+  GLenum e = glGetError(); // clear any old error
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
+  e = glGetError();
+  if (e != GL_NO_ERROR) {
+    std::cerr << "GL error 0x" << std::hex << e
+              << " right after uploading MV in " << __FUNCTION__ << ":"
+              << __LINE__ << "\n";
+    assert(false);
+  }
+  structures[1]->renderStructure(activeProg);
+  MV->popMatrix();
+};
+
+inline void drawGridLines(std::shared_ptr<Program> &activeProg,
+                          std::shared_ptr<MatrixStack> &P,
+                          std::shared_ptr<MatrixStack> &MV, glm::mat4 &T) {
+  drawGrid(activeProg, P, MV);
+};
+
+inline void drawBullets(std::shared_ptr<Program> &activeProg,
+                        std::shared_ptr<MatrixStack> &P,
+                        std::shared_ptr<MatrixStack> &MV, float &oldFrameTime,
+                        std::shared_ptr<BulletManager> &bulletManager,
+                        std::vector<std::shared_ptr<Structure>> &structures) {
+  float now = float(glfwGetTime());
+  float dt = now - oldFrameTime;
+  oldFrameTime = now;
+
+  // advance & fracture
+  MV->pushMatrix();
+  bulletManager->update(dt, *structures[0]);
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
+  bulletManager->renderBullets(activeProg);
+  MV->popMatrix();
+}
+
+inline void
+drawHUD(GLFWwindow *window, int width, int height,
+        std::shared_ptr<Program> &activeProg,
+        std::shared_ptr<MatrixStack> &HUDP, std::shared_ptr<MatrixStack> &HUDMV,
+        std::vector<std::shared_ptr<Light>> &lights,
+        glm::vec4 &lightPosCamSpace, std::shared_ptr<Material> &activeMaterial,
+        std::vector<std::shared_ptr<Material>> &materials,
+        std::shared_ptr<Shape> &hudBunny, std::shared_ptr<Shape> &hudTeapot) {
+  HUDP->pushMatrix();
+  float fovy = glm::radians(45.0f);
+  HUDP->multMatrix(glm::perspective(fovy, (float)width / (float)height, 0.1f,
+                                    100.0f)); // Projection
+  HUDMV->pushMatrix();
+  HUDMV->multMatrix(glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0, 0, 0),
+                                glm::vec3(0, 1, 0))); // ModelView
+
+  // --- Begin HUD Rendering ---
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(HUDP->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(HUDMV->topMatrix()));
+
+  // Set light position uniform on the active program
+  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x,
+              lightPosCamSpace.y, lightPosCamSpace.z);
+
+  // Set material uniforms from activeMaterial
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
+              activeMaterial->getMaterialKA().y,
+              activeMaterial->getMaterialKA().z);
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
+              activeMaterial->getMaterialKD().z);
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
+              activeMaterial->getMaterialKS().z);
+  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+
+  // Get the current window size.
+  glfwGetFramebufferSize(window, &width, &height);
+
+  // Disable depth testing so the HUD always appears on top.
+  glClear(GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+
+  // --- Upper Left HUD Object (Bunny) ---
+
+  // Choose the depth at which to place the HUD objects.
+  float d = 5.0f;
+  float halfHeight = d * tan(fovy / 2.0f);
+  float halfWidth = halfHeight * ((float)width / (float)height);
+
+  // Define margins in world units.
+  float marginX = -0.9f;
+  float marginY = -0.7f;
+
+  // Compute positions in view space (assuming camera at origin, looking down
+  // -Z).
+  glm::vec3 upperLeftPos(-halfWidth + marginX, halfHeight - marginY, -d);
+  glm::vec3 upperRightPos(halfWidth - marginX, halfHeight - marginY, -d);
+
+  float hudObjectSize = 0.6f;                 // desired size for HUD objects
+  float rotationAngle = (float)glfwGetTime(); // rotation angle based on time
+
+  // glm::mat4 hudMV = glm::mat4(1.0f);
+  HUDMV->pushMatrix();
+  HUDMV->translate(upperLeftPos);
+  HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+  HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(HUDMV->topMatrix()));
+  hudBunny->draw(activeProg);
+  HUDMV->popMatrix();
+
+  // --- Upper Right HUD Object (Teapot) ---
+  // hudMV = glm::mat4(1.0f);
+  HUDMV->pushMatrix();
+  HUDMV->translate(upperRightPos);
+  HUDMV->translate(glm::vec3(0.0f, 0.2f, 0.0f));
+  HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+  HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(HUDMV->topMatrix()));
+  hudTeapot->draw(activeProg);
+  HUDMV->popMatrix();
+
+  // Re-enable depth testing after HUD pass.
+  glEnable(GL_DEPTH_TEST);
+
+  HUDMV->popMatrix();
+  HUDP->popMatrix();
+  // --- End HUD Rendering ---
+};

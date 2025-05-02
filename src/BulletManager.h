@@ -93,7 +93,6 @@ public:
       return;
     }
 
-    prog->bind();
     glBindVertexArray(sphereMesh->getVAO());
 
     // Bind vetex attribs (aPos and aNor)
@@ -152,6 +151,5 @@ public:
     // cleanup
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    prog->unbind();
   }
 };

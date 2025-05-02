@@ -51,7 +51,9 @@ shared_ptr<Shape> frustrum;
 shared_ptr<Shape> cubeMesh;
 shared_ptr<Shape> sphereMesh;
 shared_ptr<BulletManager> bulletManager;
+std::vector<shared_ptr<Structure>> structures;
 shared_ptr<Structure> wall;
+shared_ptr<Structure> wallTwo;
 
 // HUD
 shared_ptr<Shape> hudBunny;
@@ -225,13 +227,12 @@ static void init() {
   bulletManager = make_shared<BulletManager>(sphereMesh);
   player = make_shared<Player>(camera, bulletManager);
   std::shared_ptr<Armament> pp_919 = make_shared<Armament>(50, 50);
-  player->setWeapon(pp_919);
-  // simulate a single fire
-  bulletManager->spawnBullet(
-      camera->getPosition() + camera->getForward() * 1.0f, // in front of camera
-      camera->getForward() * 4.0f, BulletType::PIERCING);
+  player->setWeapon(pp_919); // For more ammo
   // Create structure
   wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(3.0f, 0.0f, 0.0f));
+  wallTwo = make_shared<Wall>(cubeMesh, 7, 5, glm::vec3(0.0f, 0.0f, 0.0f));
+  structures.push_back(wall);
+  structures.push_back(wallTwo);
   lights.push_back(lightSource);
   lights.push_back(lightSourceTwo);
 
@@ -298,7 +299,6 @@ static void render() {
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
 
-  // GRIIIDS LINESSS
   activeProg->bind();
   glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
                      glm::value_ptr(P->topMatrix()));
@@ -306,165 +306,35 @@ static void render() {
                      glm::value_ptr(MV->topMatrix()));
   glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
                      glm::value_ptr(T));
-  glUniform3fv(activeProg->getUniform("lightPos"), 1,
-               glm::value_ptr(lightPosCamSpace));
-  glUniform1i(activeProg->getUniform("useCloudTexture"), 0);
-
-  drawGrid(activeProg, P, MV);
+  // GRIIIDS LINESSS
+  drawGridLines(activeProg, P, MV, T);
   activeProg->unbind();
 
-  // SCENE
+  // SCENE , set prog to bling phong shader
   shaderIndex = 0;
   activeProg = programs[shaderIndex];
   activeProg->bind();
-  // Back to original shader
-  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
-                     glm::value_ptr(P->topMatrix()));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                     glm::value_ptr(MV->topMatrix()));
+  drawLevel(activeProg, P, MV, lights, activeMaterial, materials, structures);
+  activeProg->unbind();
 
-  // Set light position uniform on the active program
-  // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
-  glm::mat4 viewMatrix = MV->topMatrix();
-  std::vector<glm::vec3> viewLightPositions, lightColors;
-  viewLightPositions.resize(lights.size());
-  lightColors.resize(lights.size());
-  for (size_t i = 0; i < lights.size(); i++) {
-    // Transform the world-space light position into view space.
-    glm::vec4 viewPos = viewMatrix * glm::vec4(lights[i]->pos, 1.0f);
-    viewLightPositions[i] = glm::vec3(viewPos);
-    lightColors[i] = lights[i]->color;
-  }
-
-  // Now pass the transformed positions to the shader.
-  glUniform3fv(activeProg->getUniform("lightPos"), lights.size(),
-               glm::value_ptr(viewLightPositions[0]));
-  glUniform3fv(activeProg->getUniform("lightColor"), lights.size(),
-               glm::value_ptr(lightColors[0]));
-
-  // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
-              activeMaterial->getMaterialKA().y,
-              activeMaterial->getMaterialKA().z);
-  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
-              activeMaterial->getMaterialKD().y,
-              activeMaterial->getMaterialKD().z);
-  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
-              activeMaterial->getMaterialKS().y,
-              activeMaterial->getMaterialKS().z);
-  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
-  MV->pushMatrix();
-  wall->renderStructure(activeProg);
-  MV->popMatrix();
-
-  // BUllet testing
-  float now = float(glfwGetTime());
-  float dt = now - oldFrameTime;
-  oldFrameTime = now;
-
-  // advance & fracture
-  MV->pushMatrix();
-  bulletManager->update(dt, *wall);
-  bulletManager->renderBullets(activeProg);
-  MV->popMatrix();
-
+  // Bullets
+  activeProg->bind();
+  drawBullets(activeProg, P, MV, oldFrameTime, bulletManager, structures);
   activeProg->unbind();
 
   MV->popMatrix();
   P->popMatrix();
 
   // HUD Rendering (Help from ChatGPT)
-  HUDP->pushMatrix();
-  float fovy = glm::radians(45.0f);
-  HUDP->multMatrix(glm::perspective(fovy, (float)width / (float)height, 0.1f,
-                                    100.0f)); // Projection
-  HUDMV->pushMatrix();
-  HUDMV->multMatrix(glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0, 0, 0),
-                                glm::vec3(0, 1, 0))); // ModelView
-
   activeProg = programs[2];
-  // --- Begin HUD Rendering ---
   activeProg->bind();
-  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
-                     glm::value_ptr(HUDP->topMatrix()));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                     glm::value_ptr(HUDMV->topMatrix()));
-
-  // Set light position uniform on the active program
-  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x,
-              lightPosCamSpace.y, lightPosCamSpace.z);
-
-  // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
-              activeMaterial->getMaterialKA().y,
-              activeMaterial->getMaterialKA().z);
-  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
-              activeMaterial->getMaterialKD().y,
-              activeMaterial->getMaterialKD().z);
-  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
-              activeMaterial->getMaterialKS().y,
-              activeMaterial->getMaterialKS().z);
-  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
-
-  // Get the current window size.
-  glfwGetFramebufferSize(window, &width, &height);
-
-  // Disable depth testing so the HUD always appears on top.
-  glClear(GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_DEPTH_TEST);
-
-  // --- Upper Left HUD Object (Bunny) ---
-
-  // Choose the depth at which to place the HUD objects.
-  float d = 5.0f;
-  float halfHeight = d * tan(fovy / 2.0f);
-  float halfWidth = halfHeight * ((float)width / (float)height);
-
-  // Define margins in world units.
-  float marginX = -0.9f;
-  float marginY = -0.7f;
-
-  // Compute positions in view space (assuming camera at origin, looking down
-  // -Z).
-  glm::vec3 upperLeftPos(-halfWidth + marginX, halfHeight - marginY, -d);
-  glm::vec3 upperRightPos(halfWidth - marginX, halfHeight - marginY, -d);
-
-  float hudObjectSize = 0.6f;                 // desired size for HUD objects
-  float rotationAngle = (float)glfwGetTime(); // rotation angle based on time
-
-  // glm::mat4 hudMV = glm::mat4(1.0f);
-  HUDMV->pushMatrix();
-  HUDMV->translate(upperLeftPos);
-  HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-  HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                     (&HUDMV->topMatrix()[0][0]));
-  hudBunny->draw(activeProg);
-  HUDMV->popMatrix();
-
-  // --- Upper Right HUD Object (Teapot) ---
-  // hudMV = glm::mat4(1.0f);
-  HUDMV->pushMatrix();
-  HUDMV->translate(upperRightPos);
-  HUDMV->translate(glm::vec3(0.0f, 0.2f, 0.0f));
-  HUDMV->rotate(rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-  HUDMV->scale(glm::vec3(hudObjectSize, hudObjectSize, hudObjectSize));
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                     (&HUDMV->topMatrix()[0][0]));
-  hudTeapot->draw(activeProg);
-  HUDMV->popMatrix();
-
-  // Re-enable depth testing after HUD pass.
-  glEnable(GL_DEPTH_TEST);
-
-  HUDMV->popMatrix();
-  HUDP->popMatrix();
+  drawHUD(window, width, height, activeProg, HUDP, HUDMV, lights,
+          lightPosCamSpace, activeMaterial, materials, hudBunny, hudTeapot);
   activeProg->unbind();
-  // --- End HUD Rendering ---
 
+  // Top down view
   shaderIndex = 3;
   activeProg = programs[shaderIndex];
-  // Top down view
   if (enableTopDown) {
     // Create second viewport
     activeProg->bind();
