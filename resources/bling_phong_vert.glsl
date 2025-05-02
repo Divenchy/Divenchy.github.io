@@ -5,7 +5,8 @@ uniform mat4 MV;
 
 attribute vec4 aPos; // in object space
 attribute vec3 aNor; // in object space
-                     //
+attribute vec2 aTex; // uv
+
 attribute vec4 aInstMat0;
 attribute vec4 aInstMat1;
 attribute vec4 aInstMat2;

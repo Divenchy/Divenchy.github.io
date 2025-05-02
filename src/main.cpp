@@ -14,6 +14,8 @@
 #include "Routines.h"
 #include "Structure.h"
 #include "Wall.h"
+#include "BulletManager.h"
+#include "Player.h"
 // clang-format on
 
 using namespace std;
@@ -23,9 +25,8 @@ string RESOURCE_DIR = "./"; // Where the resources are loaded from
 int TASK = 1;
 bool OFFLINE = false;
 
-// Camera vars, for potential speed increase as its held
-float deltaTime;
-float oldDeltaTime = 0;
+float oldDeltaTime;
+float oldFrameTime = 0.0f;
 
 // For shear
 glm::mat4 S(1.0f);
@@ -40,14 +41,16 @@ glm::mat4 T(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
 sf::Music music;
 bool isPlaying;
 
+shared_ptr<Player> player;
 shared_ptr<Camera> camera;
 shared_ptr<Program> prog;
 shared_ptr<Shape> shape;
 shared_ptr<Shape> frustrum;
 
 // Shapes
-shared_ptr<Shape> bullet;
 shared_ptr<Shape> cubeMesh;
+shared_ptr<Shape> sphereMesh;
+shared_ptr<BulletManager> bulletManager;
 shared_ptr<Structure> wall;
 
 // HUD
@@ -57,17 +60,21 @@ shared_ptr<Shape> hudTeapot;
 // Objects vector
 std::vector<std::shared_ptr<Object>> objects;
 
-// Shaders, Lights, and Material stacks
+// Lights, and Material stacks
 std::vector<shared_ptr<Program>> programs;
 std::vector<shared_ptr<Material>> materials;
 std::vector<shared_ptr<Light>> lights;
 
 std::shared_ptr<Light> lightSource = std::make_shared<Light>(
     glm::vec3(0.0f, 20.0f, -30.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+std::shared_ptr<Light> lightSourceTwo = std::make_shared<Light>(
+    glm::vec3(-15.0f, 20.0f, -15.0f), glm::vec3(1.0f, 1.0f, 1.0f));
 
+// Shaders
 glm::vec3 ka;
 glm::vec3 kd;
 glm::vec3 ks;
+glm::vec3 ke;
 glm::vec3 s;
 glm::vec3 vPos;
 glm::vec3 vNor;
@@ -95,6 +102,12 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action,
                          int mods) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GL_TRUE);
+  }
+  // GAME controls
+  if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+    // fire once when F goes down
+    if (player)
+      player->shoot();
   }
 }
 
@@ -168,6 +181,7 @@ static void resize_callback(GLFWwindow *window, int width, int height) {
 static void init() {
   // Initialize time.
   glfwSetTime(0.0);
+  oldFrameTime = float(glfwGetTime());
 
   // Set background color.
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -203,12 +217,23 @@ static void init() {
   cubeMesh->init();
   cubeMesh->setType(ShapeType::CUBE);
 
-  bullet = make_shared<Shape>();
-  bullet->loadMesh(RESOURCE_DIR + "sphere.obj");
-  bullet->init();
+  sphereMesh = make_shared<Shape>();
+  sphereMesh->loadMesh(RESOURCE_DIR + "sphere.obj");
+  sphereMesh->init();
+  sphereMesh->setType(ShapeType::SPHERE);
 
+  bulletManager = make_shared<BulletManager>(sphereMesh);
+  player = make_shared<Player>(camera, bulletManager);
+  std::shared_ptr<Armament> pp_919 = make_shared<Armament>(50, 50);
+  player->setWeapon(pp_919);
+  // simulate a single fire
+  bulletManager->spawnBullet(
+      camera->getPosition() + camera->getForward() * 1.0f, // in front of camera
+      camera->getForward() * 4.0f, BulletType::PIERCING);
   // Create structure
-  wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(0.0f, 0.0f, 0.0f));
+  wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(3.0f, 0.0f, 0.0f));
+  lights.push_back(lightSource);
+  lights.push_back(lightSourceTwo);
 
   GLSL::checkError(GET_FILE_LINE);
 }
@@ -240,8 +265,6 @@ static void render() {
     musicToggle();
   }
 
-  if (!keyToggles[(unsigned)'f']) {
-  }
   float deltaTime = (float)glfwGetTime() - oldDeltaTime;
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     camera->keyInput('w', deltaTime);
@@ -275,6 +298,7 @@ static void render() {
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
 
+  // GRIIIDS LINESSS
   activeProg->bind();
   glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
                      glm::value_ptr(P->topMatrix()));
@@ -287,10 +311,9 @@ static void render() {
   glUniform1i(activeProg->getUniform("useCloudTexture"), 0);
 
   drawGrid(activeProg, P, MV);
-
-  bullet->draw(activeProg);
   activeProg->unbind();
 
+  // SCENE
   shaderIndex = 0;
   activeProg = programs[shaderIndex];
   activeProg->bind();
@@ -301,8 +324,23 @@ static void render() {
                      glm::value_ptr(MV->topMatrix()));
 
   // Set light position uniform on the active program
-  glUniform3f(activeProg->getUniform("lightPos"), lightPosCamSpace.x,
-              lightPosCamSpace.y, lightPosCamSpace.z);
+  // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
+  glm::mat4 viewMatrix = MV->topMatrix();
+  std::vector<glm::vec3> viewLightPositions, lightColors;
+  viewLightPositions.resize(lights.size());
+  lightColors.resize(lights.size());
+  for (size_t i = 0; i < lights.size(); i++) {
+    // Transform the world-space light position into view space.
+    glm::vec4 viewPos = viewMatrix * glm::vec4(lights[i]->pos, 1.0f);
+    viewLightPositions[i] = glm::vec3(viewPos);
+    lightColors[i] = lights[i]->color;
+  }
+
+  // Now pass the transformed positions to the shader.
+  glUniform3fv(activeProg->getUniform("lightPos"), lights.size(),
+               glm::value_ptr(viewLightPositions[0]));
+  glUniform3fv(activeProg->getUniform("lightColor"), lights.size(),
+               glm::value_ptr(lightColors[0]));
 
   // Set material uniforms from activeMaterial
   glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
@@ -315,7 +353,20 @@ static void render() {
               activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  MV->pushMatrix();
   wall->renderStructure(activeProg);
+  MV->popMatrix();
+
+  // BUllet testing
+  float now = float(glfwGetTime());
+  float dt = now - oldFrameTime;
+  oldFrameTime = now;
+
+  // advance & fracture
+  MV->pushMatrix();
+  bulletManager->update(dt, *wall);
+  bulletManager->renderBullets(activeProg);
+  MV->popMatrix();
 
   activeProg->unbind();
 

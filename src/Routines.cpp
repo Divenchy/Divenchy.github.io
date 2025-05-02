@@ -103,11 +103,14 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   // Blinn_phong
   std::shared_ptr<Program> blingProg = make_shared<Program>();
   blingProg->setShaderNames(RESOURCE_DIR + "bling_phong_vert.glsl",
-                            RESOURCE_DIR + "bling_phong_frag.glsl");
+                            RESOURCE_DIR + "bling_phong_frag_mult_lights.glsl");
   blingProg->setVerbose(true);
   blingProg->init();
   blingProg->addAttribute("aPos");
   blingProg->addAttribute("aNor");
+  blingProg->addAttribute("aTex");
+  blingProg->addUniform("lightPos");
+  blingProg->addUniform("lightColor");
   blingProg->addAttribute("aInstMat0");
   blingProg->addAttribute("aInstMat1");
   blingProg->addAttribute("aInstMat2");
@@ -119,6 +122,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProg->addUniform("ka");
   blingProg->addUniform("kd");
   blingProg->addUniform("ks");
+  blingProg->addUniform("ke");
+  blingProg->addUniform("t");
   blingProg->addUniform("s");
   blingProg->setVerbose(false);
   programs.push_back(blingProg);

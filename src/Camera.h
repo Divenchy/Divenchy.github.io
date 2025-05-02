@@ -31,6 +31,10 @@ public:
   void mouseMoveFreeLook(float x, float y);
   void keyInput(char key, float deltaTime);
   void zoom(float factor);
+  glm::vec3 getPosition() { return this->position; };
+  glm::vec3 getForward() { return this->forward; };
+  void setPreviousMouse(const glm::vec2 &p) { mousePrev = p; }
+  void processMouseMovement(float dx, float dy);
 
 private:
   float aspect;
@@ -49,6 +53,7 @@ private:
 
   // New members
   glm::vec3 position;
+  glm::vec3 forward;
   float yaw, pitch; // In rads
 };
 

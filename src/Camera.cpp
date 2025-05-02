@@ -12,8 +12,15 @@ Camera::Camera()
     : aspect(1.0f), fovy((float)(45.0 * M_PI / 180.0)), znear(0.1f),
       zfar(1000.0f), rotations(0.0, 0.0), translations(0.0f, 0.0f, -5.0f),
       rfactor(0.01f), tfactor(0.001f), sfactor(0.005f),
-      position(0.0f, 0.2f, 5.0f), yaw(glm::radians(90.0f)),
-      pitch(glm::radians(0.0f)) {} // Yaw at 90 to face -Z
+      position(0.0f, 0.0f, 5.0f), yaw(glm::radians(90.0f)),
+      pitch(glm::radians(0.0f)) {
+  this->forward = glm::normalize(
+      glm::vec3(cos(pitch) * sin(yaw),
+                sin(pitch), // Note: For translation, we ignore pitch
+                            // so that movement stays on the ground.
+                cos(pitch) * cos(yaw)));
+
+} // Yaw at 90 to face -Z
 
 Camera::~Camera() {}
 
@@ -82,6 +89,11 @@ void Camera::mouseMoveFreeLook(float x, float y) {
   // Clamp pitch to avoid wonky wonk
   float pitchLimit = glm::radians(60.0f);
   pitch = std::max(-pitchLimit, std::min(pitch, pitchLimit));
+  this->forward = glm::normalize(
+      glm::vec3(cos(pitch) * sin(yaw),
+                sin(pitch), // Note: For translation, we ignore pitch
+                            // so that movement stays on the ground.
+                cos(pitch) * cos(yaw)));
   mousePrev = mouseCurr;
 }
 
