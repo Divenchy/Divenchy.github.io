@@ -57,14 +57,14 @@ public:
     // 0) grab your current 3D position
     glm::vec3 pos = playerPOV->getPosition();
 
-    // 1) -- handle jumping & gravity
+    // Jumping and vertical
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && grounded) {
       vertVel = JUMP_SPEED;
       grounded = false;
     }
     vertVel += GRAV_VEC.y() * dt; // apply gravity
-    pos.y += vertVel * dt;        // move vertically
 
+    pos.y += vertVel * dt;
     // floor / ground collision
     if (pos.y <= COLLISION_FOOT_Y) {
       pos.y = COLLISION_FOOT_Y;
@@ -72,7 +72,7 @@ public:
       grounded = true;
     }
 
-    // 2) build your input‐directed horizontal velocity
+    // Horizontal checks
     glm::vec3 forward = playerPOV->getForward();
     forward.y = 0;
     forward = glm::normalize(forward);
@@ -92,31 +92,65 @@ public:
     if (glm::length(dir) > 1e-4f) {
       dir = glm::normalize(dir);
       horizVel = dir * speed;
+    } else {
+      horizVel = glm::vec3(0.0f);
     }
 
-    // 3) a single horiz sweep at your _new_ Y
-    glm::vec3 horizCandidate = pos + glm::vec3(horizVel.x, 0, horizVel.z) * dt;
-    // build a *short* AABB (just around your feet)
-    float stepHeight = 0.5f;
-    glm::vec3 footMin{horizCandidate.x - COLLISION_RADIUS_XZ, pos.y,
-                      horizCandidate.z - COLLISION_RADIUS_XZ};
-    glm::vec3 footMax{horizCandidate.x + COLLISION_RADIUS_XZ,
-                      pos.y + stepHeight,
-                      horizCandidate.z + COLLISION_RADIUS_XZ};
+    // — first try to move at current Y —
+    glm::vec3 candidate = pos + glm::vec3(horizVel.x, 0, horizVel.z) * dt;
+    const float r = COLLISION_RADIUS_XZ;
+    // your “feet” AABB
+    auto makeslab = [&](float y0) {
+      return std::make_pair(
+          glm::vec3(candidate.x - r, y0, candidate.z - r),
+          glm::vec3(candidate.x + r, y0 + 0.5f, candidate.z + r));
+    };
+    auto [footMin, footMax] = makeslab(pos.y);
+
     bool blocked = false;
     for (auto &s : structures) {
-      // pass the candidate foot‐location (x,z) and your _new_ pos.y
       if (s->collidesAABB(footMin, footMax)) {
         blocked = true;
         break;
       }
     }
+
     if (!blocked) {
-      pos.x = horizCandidate.x;
-      pos.z = horizCandidate.z;
+      // no obstacle: commit
+      pos.x = candidate.x;
+      pos.z = candidate.z;
+    } else {
+      // blocked — see if we can “step up” a little
+      const float maxStep = 0.5f; // max step height
+      float bestTopY = -1e9f;
+      // for each structure, look for cubes whose AABB sits between current Y
+      // and current Y+maxStep
+      for (auto &s : structures) {
+        for (auto &M : s->getModelMatsStatic()) {
+          glm::vec3 c = glm::vec3(M[3]); // cube center
+          float topY = c.y + 0.5f;       // cube’s top face
+          // only consider if it’s within step range on X,Z and within maxStep
+          // above you
+          if (topY > pos.y && topY <= pos.y + maxStep &&
+              candidate.x > c.x - 0.5f && candidate.x < c.x + 0.5f &&
+              candidate.z > c.z - 0.5f && candidate.z < c.z + 0.5f) {
+            bestTopY = std::max(bestTopY, topY);
+          }
+        }
+      }
+
+      if (bestTopY > -1e8f) {
+        // climb up
+        pos.x = candidate.x;
+        pos.z = candidate.z;
+        pos.y = bestTopY;
+        grounded = true; // you’re standing on that little ledge now
+        vertVel = 0.0f;
+      }
+      // else: still blocked, so stay in place
     }
 
-    // 4) finally commit
+    // finally commit
     playerPOV->setPosition(pos);
   }
 };
