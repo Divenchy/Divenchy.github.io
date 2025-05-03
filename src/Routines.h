@@ -103,23 +103,9 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
   MV->pushMatrix();
-  structures[0]->renderStructure(activeProg);
-  MV->popMatrix();
-
-  MV->pushMatrix();
-  MV->rotate(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-  GLenum e = glGetError(); // clear any old error
-  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                     glm::value_ptr(MV->topMatrix()));
-  e = glGetError();
-  if (e != GL_NO_ERROR) {
-    std::cerr << "GL error 0x" << std::hex << e
-              << " right after uploading MV in " << __FUNCTION__ << ":"
-              << __LINE__ << "\n";
-    assert(false);
+  for (auto structure : structures) {
+    structure->renderStructure(activeProg);
   }
-  structures[1]->renderStructure(activeProg);
   MV->popMatrix();
 };
 
@@ -131,16 +117,11 @@ inline void drawGridLines(std::shared_ptr<Program> &activeProg,
 
 inline void drawBullets(std::shared_ptr<Program> &activeProg,
                         std::shared_ptr<MatrixStack> &P,
-                        std::shared_ptr<MatrixStack> &MV, float &oldFrameTime,
+                        std::shared_ptr<MatrixStack> &MV, float dt,
                         std::shared_ptr<BulletManager> &bulletManager,
                         std::vector<std::shared_ptr<Structure>> &structures) {
-  float now = float(glfwGetTime());
-  float dt = now - oldFrameTime;
-  oldFrameTime = now;
-
   // advance & fracture
   MV->pushMatrix();
-  bulletManager->update(dt, *structures[0]);
   glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
                      glm::value_ptr(MV->topMatrix()));
   bulletManager->renderBullets(activeProg);
@@ -160,7 +141,7 @@ inline void drawFreeCubes(std::shared_ptr<Program> &activeProg,
     // optional ground collision
     if (cc.position.y() < 0) {
       cc.position.y() = 0;
-      cc.velocity.y() *= -0.5;
+      cc.velocity.y() *= -0.4; // bounce
     }
     // draw a cube at cc.position with size cc.size
     MV->pushMatrix();

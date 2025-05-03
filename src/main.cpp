@@ -1,3 +1,4 @@
+#include "GLFW/glfw3.h"
 #include "glm/matrix.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -24,9 +25,6 @@ GLFWwindow *window;         // Main application window
 string RESOURCE_DIR = "./"; // Where the resources are loaded from
 int TASK = 1;
 bool OFFLINE = false;
-
-float oldDeltaTime;
-float oldFrameTime = 0.0f;
 
 // For shear
 glm::mat4 S(1.0f);
@@ -109,7 +107,12 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action,
   if (key == GLFW_KEY_F && action == GLFW_PRESS) {
     // fire once when F goes down
     if (player)
-      player->shoot();
+      // right before you fire:
+      std::cerr << "STATIC CUBES before shot: "
+                << wall->getModelMatsStatic().size() << "\n";
+    player->shoot();
+    std::cerr << "STATIC CUBES after shot:  "
+              << wall->getModelMatsStatic().size() << "\n";
   }
 }
 
@@ -183,7 +186,6 @@ static void resize_callback(GLFWwindow *window, int width, int height) {
 static void init() {
   // Initialize time.
   glfwSetTime(0.0);
-  oldFrameTime = float(glfwGetTime());
 
   // Set background color.
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -233,6 +235,7 @@ static void init() {
   wallTwo = make_shared<Wall>(cubeMesh, 7, 5, glm::vec3(0.0f, 0.0f, 0.0f));
   structures.push_back(wall);
   structures.push_back(wallTwo);
+  structures[1]->rotate(glm::radians(90.0f), GLM_AXIS_Y);
   lights.push_back(lightSource);
   lights.push_back(lightSourceTwo);
 
@@ -241,6 +244,10 @@ static void init() {
 
 // This function is called every frame to draw the scene.
 static void render() {
+  static double lastTime = 0.0; // preserved between frames
+  double now = glfwGetTime();
+  double deltaTime = now - lastTime;
+  lastTime = now;
   // Clear framebuffer.
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   if (keyToggles[(unsigned)'c']) {
@@ -266,16 +273,11 @@ static void render() {
     musicToggle();
   }
 
-  float deltaTime = (float)glfwGetTime() - oldDeltaTime;
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    camera->keyInput('w', deltaTime);
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    camera->keyInput('s', deltaTime);
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    camera->keyInput('a', deltaTime);
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    camera->keyInput('d', deltaTime);
+  // Game state
+  bulletManager->update(deltaTime, structures);
+  player->move(window, deltaTime, structures);
 
+  //// DRAWING
   // Matrix stacks
   auto P = make_shared<MatrixStack>();
   auto MV = make_shared<MatrixStack>();
@@ -319,7 +321,7 @@ static void render() {
 
   // Bullets
   activeProg->bind();
-  drawBullets(activeProg, P, MV, oldFrameTime, bulletManager, structures);
+  drawBullets(activeProg, P, MV, deltaTime, bulletManager, structures);
   activeProg->unbind();
 
   MV->popMatrix();

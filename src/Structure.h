@@ -22,6 +22,9 @@ private:
   std::vector<std::shared_ptr<Particle>> particles;
   std::vector<std::shared_ptr<Spring>> springs;
 
+  // For transforms
+  glm::mat4 worldXform = glm::mat4(1.0f);
+
 public:
   Structure(std::shared_ptr<Shape> cubeMesh) : cubeMesh(cubeMesh) {
     // Ensure shape passed is indeed a cube, if not reject
@@ -34,6 +37,45 @@ public:
   virtual void createStructure(std::shared_ptr<Shape> cubeMesh, int width,
                                int height, glm::vec3 center) = 0;
 
+  /// Apply a world‐space rotation to _every_ cube, particle & freeCube.
+  void rotate(float angle, const glm::vec3 &axis) {
+    glm::mat4 R = glm::rotate(glm::mat4(1.0f), angle, axis);
+
+    // 1) rotate all the instance matrices
+    for (auto &M : modelMatsStatic) {
+      M = R * M;
+    }
+
+    // 2) rotate any “free” cubes
+    for (auto &fc : freeCubes) {
+      glm::vec4 p(fc.position.x(), fc.position.y(), fc.position.z(), 1.0f);
+      p = R * p;
+      fc.position = glmVec3ToEigen(glm::vec3(p));
+
+      glm::vec4 v(fc.velocity.x(), fc.velocity.y(), fc.velocity.z(), 0.0f);
+      v = R * v;
+      fc.velocity = glmVec3ToEigen(glm::vec3(v));
+    }
+
+    // 3) rotate your constraint‐solver particles too
+    for (auto &p : particles) {
+      glm::vec4 x(p->x(0), p->x(1), p->x(2), 1.0f);
+      x = R * x;
+      p->x = glmVec3ToEigen(glm::vec3(x));
+      // if you care about their velocities:
+      glm::vec4 vel(p->v(0), p->v(1), p->v(2), 0.0f);
+      vel = R * vel;
+      p->v = glmVec3ToEigen(glm::vec3(vel));
+    }
+
+    // 4) re‐upload your instance VBO to reflect the new modelMatsStatic
+    uploadInstanceBuffer();
+  };
+
+  void setModelMatAtIdx(int idx, glm::mat4 &M) {
+    this->modelMatsStatic[idx] = M;
+  };
+  std::vector<glm::mat4> getModelMatsStatic() { return this->modelMatsStatic; };
   std::shared_ptr<Shape> getMesh() { return this->cubeMesh; };
 
   std::vector<FreeCube> getFreeCubes() { return this->freeCubes; };
@@ -141,7 +183,10 @@ public:
   };
 
   // Fracture cube, add to freeCubes
-  void fracturedCube(int k) {
+  void fracturedCube(int k, const glm::vec3 &impactPoint,
+                     const glm::vec3 &bulletVelocity) {
+    glm::vec3 cubePos = glm::vec3(modelMatsStatic[k][3]);
+
     // mark the particle free
     particles[k]->fixed = false;
     // remove all springs attached to that particle
@@ -151,20 +196,43 @@ public:
                                      s->p1 == particles[k];
                             }),
                   end(springs));
-    // move its model matrix into freeCubes for separate physics
-    FreeCube cc;
-    cc.position = glmVec3ToEigen(glm::vec3(modelMatsStatic[k][3]));
-    cc.velocity = glmVec3ToEigen(glm::vec3(0));
-    cc.size = 1.0f;
-    freeCubes.push_back(cc);
-    // erase from instanced list
+
+    // move its model matrix into freeCubes for separate physics, erase from
+    // instance
     modelMatsStatic.erase(modelMatsStatic.begin() + k);
     uploadInstanceBuffer();
+
+    // compute radial blast direction
+    glm::vec3 dir = cubePos - impactPoint;
+    if (glm::length(dir) < 1e-4f) {
+      dir = glm::vec3(1, 0, 0);
+    }
+    dir = glm::normalize(dir);
+
+    float blastStrength = 15.0f;
+    FreeCube cc;
+    cc.position = glmVec3ToEigen(cubePos);
+    cc.velocity = glmVec3ToEigen(dir * blastStrength + bulletVelocity * 0.5f);
+    cc.size = 1.0f;
+    freeCubes.push_back(cc);
   };
 
   // GETTERS and SETTERS
-
   GLuint getInstanceVBO() { return this->instanceVBO; };
   // Append to modelMatsStatic
   void pushBackModelMat(glm::mat4 mat) { modelMatsStatic.push_back(mat); };
+
+  bool collidesAABB(glm::vec3 pMin, glm::vec3 pMax) const {
+    for (auto &M : modelMatsStatic) {
+      glm::vec3 c = glm::vec3(M[3]);        // cube center
+      glm::vec3 cMin = c - glm::vec3(0.5f); // assuming unit‐size cube
+      glm::vec3 cMax = c + glm::vec3(0.5f);
+      // AABB vs AABB overlap test:
+      if ((pMin.x <= cMax.x && pMax.x >= cMin.x) &&
+          (pMin.y <= cMax.y && pMax.y >= cMin.y) &&
+          (pMin.z <= cMax.z && pMax.z >= cMin.z))
+        return true;
+    }
+    return false;
+  }
 };

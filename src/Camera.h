@@ -32,6 +32,7 @@ public:
   void keyInput(char key, float deltaTime);
   void zoom(float factor);
   glm::vec3 getPosition() { return this->position; };
+  void setPosition(glm::vec3 &pos) { this->position = pos; };
   glm::vec3 getForward() { return this->forward; };
   void setPreviousMouse(const glm::vec2 &p) { mousePrev = p; }
   void processMouseMovement(float dx, float dy);

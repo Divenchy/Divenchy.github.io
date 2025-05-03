@@ -4,6 +4,7 @@
 #include <algorithm>
 enum class BulletType { RICOCHET, PIERCING };
 
+// Thanks alot for ChatGPT for great help in developing collision detection
 struct Bullet {
   glm::vec3 position;
   glm::vec3 velocity;
@@ -47,36 +48,43 @@ public:
     bullets.push_back({playerPOVPosition, velocity, type, true});
   };
 
-  void update(float dt, Structure &wall) {
+  void update(float dt, std::vector<std::shared_ptr<Structure>> &structures) {
     modelMatsStatic.clear();
     for (auto it = bullets.begin(); it != bullets.end();) {
       // 1) advance
       it->position += it->velocity * dt;
 
-      // TODO: implement collision test
-      // 2) collision test against your wall
-      //    //    e.g. collisionSphere returns indices of hit cubes
-      float radius = 1.0f; // bullet radius
-      auto hits = wall.collisionSphere(it->position, radius);
-      if (!hits.empty()) {
-        // sort descending so highest indices are procesed first
-        // kill bullet if PIERCING and has collided
-        std::sort(hits.begin(), hits.end(), std::greater<int>());
-        if (it->type == BulletType::PIERCING) {
-          for (int idx : hits) {
-            wall.fracturedCube(idx);
+      // Collison test
+      bool bulletKilled = false;
+      for (auto structure : structures) {
+        float radius = 1.0f; // bullet radius
+        auto hits = structure->collisionSphere(it->position, radius);
+
+        if (!hits.empty()) {
+          // sort descending so highest indices are procesed first
+          // kill bullet if PIERCING and has collided
+          std::sort(hits.begin(), hits.end(), std::greater<int>());
+          if (it->type == BulletType::PIERCING) {
+            for (int idx : hits) {
+              structure->fracturedCube(idx, it->position, it->velocity);
+            }
+            // kill the bullet
+            it = bullets.erase(it);
+            // re‐upload your wall's instance buffer so that the fractured cubes
+            // vanish
+            structure->uploadInstanceBuffer();
+            bulletKilled = true;
+            break; // out of the structures loop
+          } else {
+            // RICOCHET: reflect the velocity around the cube normal (optional)
+            // glm::vec3 normal = /* compute approximate normal at collision */;
+            // it->velocity = glm::reflect(it->velocity, normal);
           }
-          // kill the bullet
-          it = bullets.erase(it);
-          // re‐upload your wall's instance buffer so that the fractured cubes
-          // vanish
-          wall.uploadInstanceBuffer();
-          continue; // skip pushing a model mat for this bullet
-        } else {
-          // RICOCHET: reflect the velocity around the cube normal (optional)
-          // glm::vec3 normal = /* compute approximate normal at collision */;
-          // it->velocity = glm::reflect(it->velocity, normal);
         }
+      }
+
+      if (bulletKilled) {
+        continue;
       }
 
       // 3) lifetime / bounds check
