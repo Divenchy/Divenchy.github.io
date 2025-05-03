@@ -1,4 +1,5 @@
 #include "BulletManager.h"
+#include "GLM_EIGEN_COMPATIBILITY_LAYER.h"
 #include "Structure.h"
 #include <cassert>
 #include <cstring>
@@ -145,6 +146,32 @@ inline void drawBullets(std::shared_ptr<Program> &activeProg,
   bulletManager->renderBullets(activeProg);
   MV->popMatrix();
 }
+
+inline void drawFreeCubes(std::shared_ptr<Program> &activeProg,
+                          std::shared_ptr<MatrixStack> &P,
+                          std::shared_ptr<MatrixStack> &MV, float &oldFrameTime,
+                          std::shared_ptr<BulletManager> &bulletManager,
+                          std::vector<std::shared_ptr<Structure>> &structures) {
+  auto freeCubes = structures[0]->getFreeCubes();
+  for (auto &cc : freeCubes) {
+    cc.velocity +=
+        glmVec3ToEigen(glm::vec3(0.0f, -9.8f, 0.0f) * (float)STEPS_H);
+    cc.position += cc.velocity * STEPS_H;
+    // optional ground collision
+    if (cc.position.y() < 0) {
+      cc.position.y() = 0;
+      cc.velocity.y() *= -0.5;
+    }
+    // draw a cube at cc.position with size cc.size
+    MV->pushMatrix();
+    MV->translate(glm::vec3(cc.position.x(), cc.position.y(), cc.position.z()));
+    MV->scale(cc.size);
+    glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                       glm::value_ptr(MV->topMatrix()));
+    structures[0]->getMesh()->draw(activeProg);
+    MV->popMatrix();
+  }
+};
 
 inline void
 drawHUD(GLFWwindow *window, int width, int height,

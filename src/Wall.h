@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Particle.h"
+#include "Spring.h"
 #include "Structure.h"
+
 class Wall : public Structure {
 private:
   int width; // in meters

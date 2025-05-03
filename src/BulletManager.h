@@ -56,23 +56,33 @@ public:
       // TODO: implement collision test
       // 2) collision test against your wall
       //    //    e.g. collisionSphere returns indices of hit cubes
-      //    float radius = 1.0f;
-      //    // auto hit = wall.collisionSphere(makeSphereShapeAt(b.position,
-      //    radius)); auto hit = std::vector<int>(); if (!hit.empty()) {
-      //      if (b.type == BulletType::PIERCING) {
-      //        // fracture all the hit bricks
-      //        for (int idx : hit)
-      //          wall.fracturedCube(idx);
-      //        // bullet keeps going (or you could kill it after N hits)
-      //      } else {
-      //        // ricochet: reverse velocity when you hit
-      //        // b.velolity = glm::reflect(b.velocity, hitSurfaceNormal(...));
-      //      }
-      //    }
+      float radius = 1.0f; // bullet radius
+      auto hits = wall.collisionSphere(it->position, radius);
+      if (!hits.empty()) {
+        // sort descending so highest indices are procesed first
+        // kill bullet if PIERCING and has collided
+        std::sort(hits.begin(), hits.end(), std::greater<int>());
+        if (it->type == BulletType::PIERCING) {
+          for (int idx : hits) {
+            wall.fracturedCube(idx);
+          }
+          // kill the bullet
+          it = bullets.erase(it);
+          // re‐upload your wall's instance buffer so that the fractured cubes
+          // vanish
+          wall.uploadInstanceBuffer();
+          continue; // skip pushing a model mat for this bullet
+        } else {
+          // RICOCHET: reflect the velocity around the cube normal (optional)
+          // glm::vec3 normal = /* compute approximate normal at collision */;
+          // it->velocity = glm::reflect(it->velocity, normal);
+        }
+      }
 
       // 3) lifetime / bounds check
       if (glm::length(it->position) > 100.0f /* or time‑to‑live */) {
         it = bullets.erase(it);
+        continue;
       } else {
         // still alive
         modelMatsStatic.push_back(
@@ -81,10 +91,6 @@ public:
       }
     }
 
-    // 4) cull dead bullets
-    bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
-                                 [](auto const &b) { return !b.alive; }),
-                  bullets.end());
     uploadInstanceBuffer();
   }
 
@@ -151,5 +157,6 @@ public:
     // cleanup
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+    prog->unbind();
   }
 };

@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Eigen/src/Core/Matrix.h"
+#include "GLM_EIGEN_COMPATIBILITY_LAYER.h"
 #include "Program.h"
 #include "Shape.h"
 #include <cassert>
-struct CollisionCube {
-  glm::vec3 position;
-  glm::vec3 velocity;
+struct FreeCube {
+  Eigen::Vector3d position;
+  Eigen::Vector3d velocity;
   float size;
 };
 
@@ -13,10 +15,12 @@ class Structure {
 private:
   std::shared_ptr<Shape> cubeMesh;
   std::vector<glm::mat4> modelMatsStatic;
-  std::vector<CollisionCube> collisionCubes; // Cubes that are now fractured
-  GLuint instanceVBO;                        // buffer for instance mats
+  std::vector<FreeCube> freeCubes; // Cubes that are now fractured
+  GLuint instanceVBO;              // buffer for instance mats
   // AKA origin of structure
   glm::vec3 center;
+  std::vector<std::shared_ptr<Particle>> particles;
+  std::vector<std::shared_ptr<Spring>> springs;
 
 public:
   Structure(std::shared_ptr<Shape> cubeMesh) : cubeMesh(cubeMesh) {
@@ -29,6 +33,27 @@ public:
 
   virtual void createStructure(std::shared_ptr<Shape> cubeMesh, int width,
                                int height, glm::vec3 center) = 0;
+
+  std::shared_ptr<Shape> getMesh() { return this->cubeMesh; };
+
+  std::vector<FreeCube> getFreeCubes() { return this->freeCubes; };
+
+  std::vector<std::shared_ptr<Particle>> getParticleArray() {
+    return this->particles;
+  };
+
+  std::vector<std::shared_ptr<Spring>> getSpringsArray() {
+    return this->springs;
+  };
+
+  void pushToParticles(std::shared_ptr<Particle> p) {
+    this->particles.push_back(p);
+  };
+  void pushToSprings(std::shared_ptr<Spring> s) { this->springs.push_back(s); };
+
+  std::shared_ptr<Particle> getParticleAtIdx(int idx) {
+    return this->particles.at(idx);
+  }
 
   // Once done filling modeMatsStatic, upload to instace buffer, and everytime
   // structure changes
@@ -102,10 +127,40 @@ public:
     glBindVertexArray(0);
   };
 
-  std::vector<int> collisionSphere(const std::shared_ptr<Shape> sphere);
+  std::vector<int> collisionSphere(const glm::vec3 &center, float radius) {
 
-  // Fracture cube, add to collisionCubes
-  void fracturedCube(int index);
+    std::vector<int> hits;
+    for (size_t k = 0; k < modelMatsStatic.size(); ++k) {
+      glm::vec3 cubePos = glm::vec3(modelMatsStatic[k][3]);
+      float halfSize = 0.5f; // or whatever your cube’s “radius” is
+      if (glm::length(center - cubePos) < (radius + halfSize)) {
+        hits.push_back((int)k);
+      }
+    }
+    return hits;
+  };
+
+  // Fracture cube, add to freeCubes
+  void fracturedCube(int k) {
+    // mark the particle free
+    particles[k]->fixed = false;
+    // remove all springs attached to that particle
+    springs.erase(remove_if(begin(springs), end(springs),
+                            [&](auto &s) {
+                              return s->p0 == particles[k] ||
+                                     s->p1 == particles[k];
+                            }),
+                  end(springs));
+    // move its model matrix into freeCubes for separate physics
+    FreeCube cc;
+    cc.position = glmVec3ToEigen(glm::vec3(modelMatsStatic[k][3]));
+    cc.velocity = glmVec3ToEigen(glm::vec3(0));
+    cc.size = 1.0f;
+    freeCubes.push_back(cc);
+    // erase from instanced list
+    modelMatsStatic.erase(modelMatsStatic.begin() + k);
+    uploadInstanceBuffer();
+  };
 
   // GETTERS and SETTERS
 

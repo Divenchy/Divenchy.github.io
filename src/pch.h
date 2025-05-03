@@ -19,4 +19,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 // Project includes
+#include "Particle.h"
 #include "Shape.h"
+#include "Spring.h"
+#include "common.h"
