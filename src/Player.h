@@ -1,5 +1,6 @@
 #include "Armament.h"
 #include "Camera.h"
+#include "GLFW/glfw3.h"
 
 static constexpr float COLLISION_RADIUS_XZ = 0.3f;
 static constexpr float COLLISION_FOOT_Y = 0.0f;
@@ -9,6 +10,9 @@ class Player {
 private:
   int health;
   float speed = 15.0f;
+  float vertVel = 0.0f;
+  bool grounded = true;
+  static constexpr float JUMP_SPEED = 8.0f;
   std::shared_ptr<Camera> playerPOV;
   std::shared_ptr<Armament> armament;
   std::shared_ptr<BulletManager> bulletManager;
@@ -67,25 +71,42 @@ public:
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
       dir -= right;
 
-    if (glm::length(dir) < 1e-4f)
-      return; // no motion
+    glm::vec3 horizVel(0.0f);
+    if (glm::length(dir) > 1e-4f) {
+      dir = glm::normalize(dir);
+      horizVel = dir * speed;
+    }
 
-    // 2) turn that into a world‐space velocity
-    dir = glm::normalize(dir);
-    glm::vec3 velocity = dir * speed; // units per second
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && grounded) {
+      vertVel = JUMP_SPEED;
+      grounded = false;
+    }
 
-    // 3) propose your new position
+    vertVel += (float)GRAV_VEC.y() * dt;
+
+    // calc new position
     glm::vec3 pos = playerPOV->getPosition();
-    glm::vec3 candidate = pos + velocity * dt;
+    glm::vec3 candidate = pos + horizVel * dt;
+    candidate.y += vertVel * dt;
+
+    // ground collision
+    if (candidate.y <= COLLISION_FOOT_Y) {
+      candidate.y = COLLISION_FOOT_Y;
+      vertVel = 0.0f;
+      grounded = true;
+    }
 
     // 4) AABB‐test against every structure
     for (auto &s : structures) {
       if (wouldCollide(candidate, *s)) {
-        return; // we hit a wall, so abort
+        // cancel horiz motions, but keep vert
+        candidate.x = pos.x;
+        candidate.z = pos.z;
+        break;
       }
     }
 
-    // 5) safe to move!
+    // Can move
     playerPOV->setPosition(candidate);
   }
 };

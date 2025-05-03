@@ -107,12 +107,7 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action,
   if (key == GLFW_KEY_F && action == GLFW_PRESS) {
     // fire once when F goes down
     if (player)
-      // right before you fire:
-      std::cerr << "STATIC CUBES before shot: "
-                << wall->getModelMatsStatic().size() << "\n";
-    player->shoot();
-    std::cerr << "STATIC CUBES after shot:  "
-              << wall->getModelMatsStatic().size() << "\n";
+      player->shoot();
   }
 }
 
@@ -265,13 +260,6 @@ static void render() {
   int width, height;
   glfwGetFramebufferSize(window, &width, &height);
   camera->setAspect((float)width / (float)height);
-
-  double t = glfwGetTime();
-  if (!keyToggles[(unsigned)' ']) {
-    // Spacebar turns animation on/off
-    t = 0.0f;
-    musicToggle();
-  }
 
   // Game state
   bulletManager->update(deltaTime, structures);
