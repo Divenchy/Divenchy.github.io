@@ -122,6 +122,13 @@ public:
       glBindBuffer(GL_ARRAY_BUFFER, cubeMesh->getNorBufID());
       glVertexAttribPointer(norLoc, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
     }
+    // aTex
+    int texLoc = prog->getAttribute("aTex");
+    if (texLoc >= 0 && cubeMesh->getTexBufID() != 0) {
+      glEnableVertexAttribArray(texLoc);
+      glBindBuffer(GL_ARRAY_BUFFER, cubeMesh->getTexBufID());
+      glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
+    }
 
     // Bind and re-upload instance data (if it’s changed)
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
@@ -158,6 +165,9 @@ public:
     for (int i = 0; i < 4; ++i) {
       if (matLoc[i] >= 0) {
         glDisableVertexAttribArray(matLoc[i]);
+      }
+      if (texLoc >= 0) {
+        glDisableVertexAttribArray(texLoc);
       }
     }
     glDisableVertexAttribArray(posLoc);
@@ -223,15 +233,24 @@ public:
   void pushBackModelMat(glm::mat4 mat) { modelMatsStatic.push_back(mat); };
 
   bool collidesAABB(glm::vec3 pMin, glm::vec3 pMax) const {
+    const float half = 0.5f;
     for (auto &M : modelMatsStatic) {
-      glm::vec3 c = glm::vec3(M[3]);        // cube center
-      glm::vec3 cMin = c - glm::vec3(0.5f); // assuming unit‐size cube
-      glm::vec3 cMax = c + glm::vec3(0.5f);
-      // AABB vs AABB overlap test:
-      if ((pMin.x <= cMax.x && pMax.x >= cMin.x) &&
-          (pMin.y <= cMax.y && pMax.y >= cMin.y) &&
-          (pMin.z <= cMax.z && pMax.z >= cMin.z))
+      glm::vec3 c = glm::vec3(M[3]);
+      glm::vec3 cMin = c - glm::vec3(half);
+      glm::vec3 cMax = c + glm::vec3(half);
+
+      // 1) if your slab is completely below this cube, skip it
+      if (pMax.y <= cMin.y)
+        continue;
+      // 2) if your slab is completely above this cube, skip it (optional)
+      if (pMin.y >= cMax.y)
+        continue;
+
+      // 3) now do the XZ overlap test
+      if (pMin.x < cMax.x && pMax.x > cMin.x && pMin.z < cMax.z &&
+          pMax.z > cMin.z) {
         return true;
+      }
     }
     return false;
   }

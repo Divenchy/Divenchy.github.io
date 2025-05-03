@@ -44,21 +44,38 @@ public:
   void setWeapon(std::shared_ptr<Armament> weapon) { this->armament = weapon; };
 
   bool wouldCollide(const glm::vec3 &candidate, const Structure &wall) const {
-    glm::vec3 pMin{candidate.x - COLLISION_RADIUS_XZ, COLLISION_FOOT_Y,
+    glm::vec3 pMin{candidate.x - COLLISION_RADIUS_XZ, candidate.y,
                    candidate.z - COLLISION_RADIUS_XZ};
-    glm::vec3 pMax{candidate.x + COLLISION_RADIUS_XZ, COLLISION_HEAD_Y,
+    glm::vec3 pMax{candidate.x + COLLISION_RADIUS_XZ,
+                   candidate.y + (COLLISION_HEAD_Y - COLLISION_FOOT_Y),
                    candidate.z + COLLISION_RADIUS_XZ};
-    // ask the structure: does any cube’s AABB overlap [pMin,pMax]?
     return wall.collidesAABB(pMin, pMax);
   }
 
   void move(GLFWwindow *window, float dt,
             const std::vector<std::shared_ptr<Structure>> &structures) {
-    // 1) figure out your input direction
+    // 0) grab your current 3D position
+    glm::vec3 pos = playerPOV->getPosition();
+
+    // 1) -- handle jumping & gravity
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && grounded) {
+      vertVel = JUMP_SPEED;
+      grounded = false;
+    }
+    vertVel += GRAV_VEC.y() * dt; // apply gravity
+    pos.y += vertVel * dt;        // move vertically
+
+    // floor / ground collision
+    if (pos.y <= COLLISION_FOOT_Y) {
+      pos.y = COLLISION_FOOT_Y;
+      vertVel = 0.0f;
+      grounded = true;
+    }
+
+    // 2) build your input‐directed horizontal velocity
     glm::vec3 forward = playerPOV->getForward();
     forward.y = 0;
     forward = glm::normalize(forward);
-
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 
     glm::vec3 dir(0.0f);
@@ -77,36 +94,29 @@ public:
       horizVel = dir * speed;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && grounded) {
-      vertVel = JUMP_SPEED;
-      grounded = false;
-    }
-
-    vertVel += (float)GRAV_VEC.y() * dt;
-
-    // calc new position
-    glm::vec3 pos = playerPOV->getPosition();
-    glm::vec3 candidate = pos + horizVel * dt;
-    candidate.y += vertVel * dt;
-
-    // ground collision
-    if (candidate.y <= COLLISION_FOOT_Y) {
-      candidate.y = COLLISION_FOOT_Y;
-      vertVel = 0.0f;
-      grounded = true;
-    }
-
-    // 4) AABB‐test against every structure
+    // 3) a single horiz sweep at your _new_ Y
+    glm::vec3 horizCandidate = pos + glm::vec3(horizVel.x, 0, horizVel.z) * dt;
+    // build a *short* AABB (just around your feet)
+    float stepHeight = 0.5f;
+    glm::vec3 footMin{horizCandidate.x - COLLISION_RADIUS_XZ, pos.y,
+                      horizCandidate.z - COLLISION_RADIUS_XZ};
+    glm::vec3 footMax{horizCandidate.x + COLLISION_RADIUS_XZ,
+                      pos.y + stepHeight,
+                      horizCandidate.z + COLLISION_RADIUS_XZ};
+    bool blocked = false;
     for (auto &s : structures) {
-      if (wouldCollide(candidate, *s)) {
-        // cancel horiz motions, but keep vert
-        candidate.x = pos.x;
-        candidate.z = pos.z;
+      // pass the candidate foot‐location (x,z) and your _new_ pos.y
+      if (s->collidesAABB(footMin, footMax)) {
+        blocked = true;
         break;
       }
     }
+    if (!blocked) {
+      pos.x = horizCandidate.x;
+      pos.z = horizCandidate.z;
+    }
 
-    // Can move
-    playerPOV->setPosition(candidate);
+    // 4) finally commit
+    playerPOV->setPosition(pos);
   }
 };

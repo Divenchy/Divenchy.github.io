@@ -108,7 +108,12 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProg->init();
   blingProg->addAttribute("aPos");
   blingProg->addAttribute("aNor");
-  blingProg->addAttribute("aTex");
+  // blingProg->addAttribute("aTex");
+  blingProg->addUniform("tileScale");
+  blingProg->addUniform("T");
+  blingProg->addUniform("texture0");
+  blingProg->addUniform("texture1");
+  blingProg->addUniform("texture2");
   blingProg->addUniform("lightPos");
   blingProg->addUniform("lightColor");
   blingProg->addAttribute("aInstMat0");
@@ -118,7 +123,6 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProg->addUniform("MV");
   blingProg->addUniform("P");
   blingProg->addUniform("normalMatrix"); // New uniform for transforming normals
-  blingProg->addUniform("lightPos");
   blingProg->addUniform("ka");
   blingProg->addUniform("kd");
   blingProg->addUniform("ks");

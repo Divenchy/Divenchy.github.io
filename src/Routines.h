@@ -60,17 +60,21 @@ void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
 
 inline void drawLevel(std::shared_ptr<Program> &activeProg,
                       std::shared_ptr<MatrixStack> &P,
-                      std::shared_ptr<MatrixStack> &MV,
+                      std::shared_ptr<MatrixStack> &MV, glm::mat4 &T,
                       std::vector<std::shared_ptr<Light>> &lights,
                       std::shared_ptr<Material> &activeMaterial,
                       std::vector<std::shared_ptr<Material>> &materials,
-                      std::vector<std::shared_ptr<Structure>> &structures) {
+                      std::vector<std::shared_ptr<Structure>> &structures,
+                      std::vector<std::shared_ptr<Texture>> &textures,
+                      int width, int height) {
 
   // Back to original shader
   glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
                      glm::value_ptr(P->topMatrix()));
   glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
                      glm::value_ptr(MV->topMatrix()));
+  glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
+                     glm::value_ptr(T));
 
   // Set light position uniform on the active program
   // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
@@ -102,10 +106,12 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
               activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  textures[0]->bind(activeProg->getUniform("texture0"));
   MV->pushMatrix();
   for (auto structure : structures) {
     structure->renderStructure(activeProg);
   }
+  textures[0]->unbind();
   MV->popMatrix();
 };
 

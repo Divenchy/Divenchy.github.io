@@ -53,6 +53,10 @@ std::vector<shared_ptr<Structure>> structures;
 shared_ptr<Structure> wall;
 shared_ptr<Structure> wallTwo;
 
+// Textures
+shared_ptr<Texture> wallTex;
+std::vector<shared_ptr<Texture>> textures;
+
 // HUD
 shared_ptr<Shape> hudBunny;
 shared_ptr<Shape> hudTeapot;
@@ -221,13 +225,19 @@ static void init() {
   sphereMesh->init();
   sphereMesh->setType(ShapeType::SPHERE);
 
+  wallTex = make_shared<Texture>();
+  wallTex->setFilename(RESOURCE_DIR + "Dungeon_brick_wall_grey.png");
+  wallTex->setUnit(0); // we'll bind it to GL_TEXTURE0
+  wallTex->init();     // uploads to the GPU
+  textures.push_back(wallTex);
+
   bulletManager = make_shared<BulletManager>(sphereMesh);
   player = make_shared<Player>(camera, bulletManager);
   std::shared_ptr<Armament> pp_919 = make_shared<Armament>(50, 50);
   player->setWeapon(pp_919); // For more ammo
   // Create structure
   wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(3.0f, 0.0f, 0.0f));
-  wallTwo = make_shared<Wall>(cubeMesh, 7, 5, glm::vec3(0.0f, 0.0f, 0.0f));
+  wallTwo = make_shared<Wall>(cubeMesh, 7, 2, glm::vec3(0.0f, 0.0f, 0.0f));
   structures.push_back(wall);
   structures.push_back(wallTwo);
   structures[1]->rotate(glm::radians(90.0f), GLM_AXIS_Y);
@@ -304,7 +314,11 @@ static void render() {
   shaderIndex = 0;
   activeProg = programs[shaderIndex];
   activeProg->bind();
-  drawLevel(activeProg, P, MV, lights, activeMaterial, materials, structures);
+  float bricksPerUnit = 0.1f; // i.e. 2 bricks per 1m
+  GLint ts = activeProg->getUniform("tileScale");
+  glUniform1f(ts, bricksPerUnit);
+  drawLevel(activeProg, P, MV, T, lights, activeMaterial, materials, structures,
+            textures, width, height);
   activeProg->unbind();
 
   // Bullets
