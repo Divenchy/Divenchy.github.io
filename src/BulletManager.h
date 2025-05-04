@@ -32,6 +32,8 @@ public:
       glDeleteBuffers(1, &instanceVBO);
   };
 
+  std::vector<Bullet> &getBullets() { return this->bullets; };
+
   // use when updating bullets
   void uploadInstanceBuffer() {
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
@@ -51,6 +53,10 @@ public:
   void update(float dt, std::vector<std::shared_ptr<Structure>> &structures) {
     modelMatsStatic.clear();
     for (auto it = bullets.begin(); it != bullets.end();) {
+      if (!it->alive) {
+        it = bullets.erase(it);
+        continue;
+      }
       // 1) advance
       it->position += it->velocity * dt;
 

@@ -9,7 +9,7 @@ static constexpr float COLLISION_HEAD_Y = 1.8f; // eye level
 class Player {
 private:
   int health;
-  float speed = 15.0f;
+  float speed = 12.0f;
   float vertVel = 0.0f;
   bool grounded = true;
   static constexpr float JUMP_SPEED = 8.0f;

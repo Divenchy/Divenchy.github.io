@@ -134,11 +134,13 @@ inline void drawBunnies(std::shared_ptr<Program> &activeProg,
                         std::vector<glm::vec3> &lightsColors,
                         std::shared_ptr<Material> &activeMaterial,
                         std::vector<std::shared_ptr<Material>> &materials,
-                        std::vector<std::shared_ptr<Object>> &bunnies,
-                        int width, int height) {
+                        std::vector<std::shared_ptr<Bunny>> &bunnies, int width,
+                        int height) {
   // std::cout << "Drawing " << bunnies.size() << " bunnies\n";
   for (auto &bunny : bunnies) {
-    bunny->drawObject(P, MV, activeProg, activeMaterial);
+    if (bunny->alive) {
+      bunny->drawObject(P, MV, activeProg, activeMaterial);
+    }
   }
 }
 
@@ -147,24 +149,27 @@ inline void drawFreeCubes(std::shared_ptr<Program> &activeProg,
                           std::shared_ptr<MatrixStack> &MV, float &oldFrameTime,
                           std::shared_ptr<BulletManager> &bulletManager,
                           std::vector<std::shared_ptr<Structure>> &structures) {
-  auto freeCubes = structures[0]->getFreeCubes();
-  for (auto &cc : freeCubes) {
-    cc.velocity +=
-        glmVec3ToEigen(glm::vec3(0.0f, -9.8f, 0.0f) * (float)STEPS_H);
-    cc.position += cc.velocity * STEPS_H;
-    // optional ground collision
-    if (cc.position.y() < 0) {
-      cc.position.y() = 0;
-      cc.velocity.y() *= -0.4; // bounce
+  for (auto structure : structures) {
+    auto freeCubes = structure->getFreeCubes();
+    for (auto &cc : freeCubes) {
+      cc.velocity +=
+          glmVec3ToEigen(glm::vec3(0.0f, -9.8f, 0.0f) * (float)STEPS_H);
+      cc.position += cc.velocity * STEPS_H;
+      // optional ground collision
+      if (cc.position.y() < 0) {
+        cc.position.y() = 0;
+        cc.velocity.y() *= -0.4; // bounce
+      }
+      // draw a cube at cc.position with size cc.size
+      MV->pushMatrix();
+      MV->translate(
+          glm::vec3(cc.position.x(), cc.position.y(), cc.position.z()));
+      MV->scale(cc.size);
+      glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                         glm::value_ptr(MV->topMatrix()));
+      structure->getMesh()->draw(activeProg);
+      MV->popMatrix();
     }
-    // draw a cube at cc.position with size cc.size
-    MV->pushMatrix();
-    MV->translate(glm::vec3(cc.position.x(), cc.position.y(), cc.position.z()));
-    MV->scale(cc.size);
-    glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                       glm::value_ptr(MV->topMatrix()));
-    structures[0]->getMesh()->draw(activeProg);
-    MV->popMatrix();
   }
 };
 
@@ -263,8 +268,9 @@ drawHUD(GLFWwindow *window, int width, int height,
 };
 
 // Levels
-inline void initFloorOne(std::vector<std::shared_ptr<Structure>> &structures,
-                         std::shared_ptr<Shape> &cubeMesh) {
+inline void
+initOuterAndFloors(std::vector<std::shared_ptr<Structure>> &structures,
+                   std::shared_ptr<Shape> &cubeMesh) {
 
   std::shared_ptr<Structure> floorOne =
       std::make_shared<Platform>(cubeMesh, 40, 40, glm::vec3(0.0f));
@@ -296,16 +302,48 @@ inline void initFloorOne(std::vector<std::shared_ptr<Structure>> &structures,
   structures.push_back(outerWallFour);
 }
 
-inline void initBunnies(std::vector<std::shared_ptr<Object>> &bunnies,
+inline void initFloorThree(std::vector<std::shared_ptr<Structure>> &structures,
+                           std::shared_ptr<Shape> &cubeMesh) {
+  std::shared_ptr<Structure> wallZero =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, 30.0f, 20.0f));
+  structures.push_back(wallZero);
+}
+
+inline void initBunnies(std::vector<std::shared_ptr<Bunny>> &bunnies,
                         std::shared_ptr<Shape> &bunny) {
 
   // Create bunnies
   for (int i = 0; i < 8; i++) {
-    std::shared_ptr<Object> bunnyTarget = std::make_shared<Object>(
+    std::shared_ptr<Bunny> bunnyTarget = std::make_shared<Bunny>(
         bunny, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), glm::vec3(1.0f), 0.0f);
     bunnyTarget->setScale(glm::vec3(1.0f));
     bunnies.push_back(bunnyTarget);
   }
   // Now move bunnies to their locations
-  bunnies[0]->setTranslation(glm::vec3(20.0f, 35.0f, 20.0f));
+  bunnies[0]->setTranslation(glm::vec3(38.0f, 31.0f, 38.0f));
+  bunnies[1]->setTranslation(glm::vec3(2.0f, 31.0f, 2.0f));
+}
+
+inline void bunnyCollisions(std::shared_ptr<BulletManager> &bulletManager,
+                            std::vector<std::shared_ptr<Bunny>> &bunnies,
+                            int &NUM_BUNNIES) {
+  const float bulletRadius = 0.5f; // same as in your manager
+  const float bunnyRadius = 1.0f;  // tweak to fit your mesh
+  auto &bullets = bulletManager->getBullets();
+  for (auto &b : bullets) {
+    if (!b.alive)
+      continue;
+    for (auto &bun : bunnies) {
+      if (!bun->alive)
+        continue;
+      float d = glm::distance(b.position, bun->getTranslation());
+      if (d < bulletRadius + bunnyRadius) {
+        // collision!
+        bun->hit();
+        b.alive = false;
+        NUM_BUNNIES--;
+        break; // stop testing this bullet
+      }
+    }
+  }
 }

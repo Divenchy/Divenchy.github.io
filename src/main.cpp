@@ -59,7 +59,7 @@ shared_ptr<Shape> sphereMesh;
 shared_ptr<Shape> bunny;
 shared_ptr<BulletManager> bulletManager;
 std::vector<shared_ptr<Structure>> structures;
-std::vector<shared_ptr<Object>> bunnies;
+std::vector<shared_ptr<Bunny>> bunnies;
 
 // Textures
 shared_ptr<Texture> wallTex;
@@ -132,6 +132,10 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action,
     bool alt = (mods & GLFW_MOD_ALT) != 0;
     camera->mouseClicked((float)xmouse, (float)ymouse, shift, ctrl, alt);
   }
+  int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
+  if (state == GLFW_PRESS) {
+    player->shoot();
+  }
 }
 
 // This function is called when the mouse moves
@@ -159,10 +163,6 @@ static void char_callback(GLFWwindow *window, unsigned int key) {
   case 'Z': {
     // Zoom out
     camera->zoom(11.0f);
-    break;
-  }
-  case 't': {
-    enableTopDown = !enableTopDown;
     break;
   }
   }
@@ -212,15 +212,6 @@ static void init() {
   frustrum->loadMesh(RESOURCE_DIR + "Frustrum.obj");
   frustrum->init();
 
-  // Create HUD elems
-  hudBunny = make_shared<Shape>();
-  hudBunny->loadMesh(RESOURCE_DIR + "bunny.obj");
-  hudBunny->init();
-
-  hudTeapot = make_shared<Shape>();
-  hudTeapot->loadMesh(RESOURCE_DIR + "teapot.obj");
-  hudTeapot->init();
-
   // Game Elements
   cubeMesh = make_shared<Shape>();
   cubeMesh->loadMesh(RESOURCE_DIR + "cube.obj");
@@ -249,7 +240,8 @@ static void init() {
   player->setWeapon(pp_919); // For more ammo
   player->setPlayerPos(glm::vec3(20.0f, 40.0f, 20.0f));
   // Create structures
-  initFloorOne(structures, cubeMesh);
+  initOuterAndFloors(structures, cubeMesh);
+  initFloorThree(structures, cubeMesh);
   initBunnies(bunnies, bunny);
 
   std::shared_ptr<Light> lightSourceFloorThree = std::make_shared<Light>(
@@ -312,6 +304,7 @@ static void render() {
   camera->setAspect((float)width / (float)height);
 
   // Game state
+  bunnyCollisions(bulletManager, bunnies, NUM_BUNNIES);
   bulletManager->update(deltaTime, structures);
   player->move(window, deltaTime, structures);
 
@@ -319,8 +312,6 @@ static void render() {
   // Matrix stacks
   auto P = make_shared<MatrixStack>();
   auto MV = make_shared<MatrixStack>();
-  auto HUDP = make_shared<MatrixStack>();
-  auto HUDMV = make_shared<MatrixStack>();
   auto TOPDOWNP = make_shared<MatrixStack>();
   auto TOPDOWNMV = make_shared<MatrixStack>();
 
@@ -451,72 +442,6 @@ static void render() {
   MV->popMatrix();
   P->popMatrix();
 
-  // HUD Rendering (Help from ChatGPT)
-  activeProg = programs[2];
-  activeProg->bind();
-  drawHUD(window, width, height, activeProg, HUDP, HUDMV, lights,
-          lightPosCamSpace, activeMaterial, materials, hudBunny, hudTeapot);
-  activeProg->unbind();
-
-  // Top down view
-  shaderIndex = 3;
-  activeProg = programs[shaderIndex];
-  if (enableTopDown) {
-    // Create second viewport
-    activeProg->bind();
-    double s = 0.5;
-    glViewport(0, 0, s * width, s * height);
-
-    // Clear a region for new view
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(0, 0, s * width, s * height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDisable(GL_SCISSOR_TEST);
-
-    float topDownSize = 15.0f;
-
-    // Setup projection and camera
-    TOPDOWNP->pushMatrix();
-    TOPDOWNP->multMatrix(glm::ortho(-topDownSize, topDownSize, -topDownSize,
-                                    topDownSize, 0.1f, 100.0f));
-    TOPDOWNMV->pushMatrix();
-    TOPDOWNMV->multMatrix(glm::lookAt(
-        glm::vec3(0, 20, 0), // camera position: 30 units above the origin
-        glm::vec3(0, 0, 0),  // look at the center of the scene
-        glm::vec3(0, 0,
-                  -1) // up vector: chosen to orient the view appropriately
-        ));
-
-    // Load P and ModelView onto GPU
-    T = glm::mat4(1.0f);
-    glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
-                       glm::value_ptr(TOPDOWNP->topMatrix()));
-    glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                       glm::value_ptr(TOPDOWNMV->topMatrix()));
-    glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
-                       glm::value_ptr(T));
-
-    // Compute the light position in top-down coordinates:
-    glm::vec4 topDownLightPos =
-        TOPDOWNMV->topMatrix() * glm::vec4(lights[0]->pos, 1.0f);
-    // glUniform3f(activeProg->getUniform("lightPos"), topDownLightPos.x,
-    // topDownLightPos.y, topDownLightPos.z);
-    glUniform3fv(activeProg->getUniform("lightPos"), 1,
-                 glm::value_ptr(topDownLightPos));
-    glUniform1i(activeProg->getUniform("useCloudTexture"), 0);
-
-    drawGrid(activeProg, TOPDOWNP, TOPDOWNMV);
-    activeProg->unbind();
-
-    activeProg = programs[0];
-    // Draw frustrum
-    drawFrustrum(activeProg, camera, TOPDOWNP, TOPDOWNMV, frustrum, width,
-                 height);
-
-    TOPDOWNMV->popMatrix();
-    TOPDOWNP->popMatrix();
-  }
-
   GLSL::checkError(GET_FILE_LINE);
 }
 
@@ -533,8 +458,17 @@ int main(int argc, char **argv) {
   if (!glfwInit()) {
     return -1;
   }
-  // Create a windowed mode window and its OpenGL context.
-  window = glfwCreateWindow(640, 480, "YOUR NAME", NULL, NULL);
+  // query the primary monitor and its video mode
+  GLFWmonitor *primary = glfwGetPrimaryMonitor();
+  const GLFWvidmode *mode = glfwGetVideoMode(primary);
+
+  // make your window fullscreen on that monitor
+  glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+  window = glfwCreateWindow(mode->width, mode->height, "TARGETPRACTICE",
+                            primary, // <-- fullscreen on primary monitor
+                            NULL     // <-- no shared context
+  );
+
   if (!window) {
     glfwTerminate();
     return -1;

@@ -52,6 +52,13 @@ public:
   void setTranslation(const glm::vec3 &translation) {
     this->translation = translation;
   };
+  glm::vec3 getTranslation() { return this->translation; };
   void setRotation(float angle) { this->rotAngle = angle; };
   float getFactor() { return this->scaleFactor; }
+};
+
+struct Bunny : public Object {
+  using Object::Object;
+  bool alive = true;
+  void hit() { this->alive = false; };
 };

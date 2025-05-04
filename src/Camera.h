@@ -28,7 +28,7 @@ public:
   void applyViewMatrixFreeLook(std::shared_ptr<MatrixStack> MV) const;
   // New
   glm::mat4 getViewMatrixFreeLook();
-  void mouseMoveFreeLook(float x, float y);
+  void mouseMoveFreeLook(float dx, float dy);
   void keyInput(char key, float deltaTime);
   void zoom(float factor);
   glm::vec3 getPosition() { return this->position; };
