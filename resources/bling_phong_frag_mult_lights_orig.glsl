@@ -42,7 +42,6 @@ void main()
     float Attenuation = 1.0 / (1.0 + (0.0429 * r) + (0.9857 * r * r));
 
     fragColor += color * Attenuation;
-
   }
 
   gl_FragColor = vec4(fragColor, 1.0);

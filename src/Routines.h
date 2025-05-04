@@ -88,7 +88,7 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
                glm::value_ptr(lightsColors[0]));
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+  glUniform3f(activeProg->getUniform("ke"), activeMaterial->getMaterialKE().x,
               activeMaterial->getMaterialKE().y,
               activeMaterial->getMaterialKE().z);
   glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
@@ -124,6 +124,21 @@ inline void drawBullets(std::shared_ptr<Program> &activeProg,
                      glm::value_ptr(MV->topMatrix()));
   bulletManager->renderBullets(activeProg);
   MV->popMatrix();
+}
+
+inline void drawBunnies(std::shared_ptr<Program> &activeProg,
+                        std::shared_ptr<MatrixStack> &P,
+                        std::shared_ptr<MatrixStack> &MV,
+                        std::vector<std::shared_ptr<Light>> &lights,
+                        std::vector<glm::vec3> &viewLightPositions,
+                        std::vector<glm::vec3> &lightsColors,
+                        std::shared_ptr<Material> &activeMaterial,
+                        std::vector<std::shared_ptr<Material>> &materials,
+                        std::vector<std::shared_ptr<Object>> &bunnies,
+                        int width, int height) {
+  for (auto &bunny : bunnies) {
+    bunny->drawObject(P, MV, activeProg, activeMaterial);
+  }
 }
 
 inline void drawFreeCubes(std::shared_ptr<Program> &activeProg,
@@ -179,7 +194,7 @@ drawHUD(GLFWwindow *window, int width, int height,
               lightPosCamSpace.y, lightPosCamSpace.z);
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+  glUniform3f(activeProg->getUniform("ke"), activeMaterial->getMaterialKE().x,
               activeMaterial->getMaterialKE().y,
               activeMaterial->getMaterialKE().z);
   glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
@@ -261,7 +276,7 @@ inline void initFloorOne(std::vector<std::shared_ptr<Structure>> &structures,
       cubeMesh, 40, 40, glm::vec3(0.0f, 30.0f, 0.0f));
   structures.push_back(floorThree);
   std::shared_ptr<Structure> outerWallOne =
-      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f));
+      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f, 0.0f, 0.0f));
   outerWallOne->setFracturable(false);
   structures.push_back(outerWallOne);
   std::shared_ptr<Structure> outerWallTwo =
@@ -278,4 +293,17 @@ inline void initFloorOne(std::vector<std::shared_ptr<Structure>> &structures,
   outerWallFour->setFracturable(false);
   outerWallFour->rotate(glm::radians(-90.0f), GLM_AXIS_Y);
   structures.push_back(outerWallFour);
+}
+
+inline void initBunnies(std::vector<std::shared_ptr<Object>> &bunnies,
+                        std::shared_ptr<Shape> &bunny) {
+
+  // Create bunnies
+  for (int i = 0; i < 8; i++) {
+    std::shared_ptr<Object> bunnyTarget = std::make_shared<Object>(
+        bunny, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), glm::vec3(1.0f), 0.0f);
+    bunnies.push_back(bunnyTarget);
+  }
+  // Now move bunnies to their locations
+  bunnies[0]->setTranslation(glm::vec3(20.0f, 40.0f, 20.0f));
 }

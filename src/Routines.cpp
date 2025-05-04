@@ -176,6 +176,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProgNoTexture->addAttribute("aNor");
   blingProgNoTexture->addUniform("lightsPos");
   blingProgNoTexture->addUniform("lightsColor");
+  blingProgNoTexture->addUniform("isBullet");
+  blingProg->addUniform("normalMatrix"); // New uniform for transforming normals
   blingProgNoTexture->addAttribute("aInstMat0");
   blingProgNoTexture->addAttribute("aInstMat1");
   blingProgNoTexture->addAttribute("aInstMat2");
@@ -300,7 +302,7 @@ void drawSceneObjects(std::vector<std::shared_ptr<Object>> &objects,
     float scaleSet = obj->getFactor() + 0.25f * sin(t + i);
 
     obj->setScale(vec3(scaleSet, scaleSet, scaleSet));
-    obj->drawObject(0, P, MV, activeProgram, activeMaterial);
+    obj->drawObject(P, MV, activeProgram, activeMaterial);
   }
 }
 

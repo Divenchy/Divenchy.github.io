@@ -1,6 +1,7 @@
 #include "GLFW/glfw3.h"
 #include "TextRenderer.h"
 #include "glm/matrix.hpp"
+#include "pch.h"
 #include <iterator>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -55,8 +56,10 @@ shared_ptr<Shape> frustrum;
 // Shapes
 shared_ptr<Shape> cubeMesh;
 shared_ptr<Shape> sphereMesh;
+shared_ptr<Shape> bunny;
 shared_ptr<BulletManager> bulletManager;
 std::vector<shared_ptr<Structure>> structures;
+std::vector<shared_ptr<Object>> bunnies;
 
 // Textures
 shared_ptr<Texture> wallTex;
@@ -74,13 +77,7 @@ std::vector<shared_ptr<Program>> programs;
 std::vector<shared_ptr<Material>> materials;
 std::vector<shared_ptr<Light>> lights;
 
-std::shared_ptr<Light> lightSource = std::make_shared<Light>(
-    glm::vec3(0.0f, 20.0f, -30.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-std::shared_ptr<Light> lightSourceTwo = std::make_shared<Light>(
-    glm::vec3(-15.0f, 20.0f, -15.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-
 // Shaders
-glm::vec3 ka;
 glm::vec3 kd;
 glm::vec3 ks;
 glm::vec3 ke;
@@ -234,6 +231,11 @@ static void init() {
   sphereMesh->init();
   sphereMesh->setType(ShapeType::SPHERE);
 
+  bunny = make_shared<Shape>();
+  bunny->loadMesh(RESOURCE_DIR + "bunny.obj");
+  bunny->init();
+  bunny->setType(ShapeType::BUNNY);
+
   wallTex = make_shared<Texture>();
   wallTex->setFilename(RESOURCE_DIR + "Dungeon_brick_wall_grey.png");
   wallTex->setUnit(0); // we'll bind it to GL_TEXTURE0
@@ -247,9 +249,13 @@ static void init() {
   player->setPlayerPos(glm::vec3(20.0f, 40.0f, 20.0f));
   // Create structures
   initFloorOne(structures, cubeMesh);
+  initBunnies(bunnies, bunny);
 
-  lights.push_back(lightSource);
-  lights.push_back(lightSourceTwo);
+  std::shared_ptr<Light> lightSourceFloorThree = std::make_shared<Light>(
+      glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(1.0f, 0.9f, 0.85f));
+  std::shared_ptr<Light> lightSourceOutdoor = std::make_shared<Light>(
+      glm::vec3(0.0f, 40.0f, -20.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+  lights.push_back(lightSourceFloorThree);
 
   GLSL::checkError(GET_FILE_LINE);
 }
@@ -325,13 +331,13 @@ static void render() {
   centerCam(MV);
 
   glm::vec4 lightPosCamSpace =
-      MV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
+      MV->topMatrix() * glm::vec4(lights[0]->pos, 1.0f);
 
   shaderIndex = 1;
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
 
-  // draw it in white at top left
+  // Draw text Infor at topleft
   activeProg = programs[4];
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -401,7 +407,7 @@ static void render() {
   // assume viewLightPositions & lightColors are std::vector<glm::vec3> of size
   glUniform3fv(uLP, lights.size(), glm::value_ptr(viewLightPositions[0]));
   glUniform3fv(uLC, lights.size(), glm::value_ptr(lightColors[0]));
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+  glUniform3f(activeProg->getUniform("ke"), activeMaterial->getMaterialKE().x,
               activeMaterial->getMaterialKE().y,
               activeMaterial->getMaterialKE().z);
   glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
@@ -411,7 +417,17 @@ static void render() {
               activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  glUniform1i(activeProg->getUniform("isBullet"), 1); // yes is bullet
+  // compute & upload normalMatrix
+  glm::mat4 M = MV->topMatrix();
+  glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(M)));
+  glUniformMatrix3fv(activeProg->getUniform("normalMatrix"), 1, GL_FALSE,
+                     glm::value_ptr(normalMatrix));
   drawBullets(activeProg, P, MV, deltaTime, bulletManager, structures);
+  glUniform1i(activeProg->getUniform("isBullet"),
+              0); // no, all bullets now rendered
+  drawBunnies(activeProg, P, MV, lights, viewLightPositions, lightColors,
+              activeMaterial, materials, bunnies, width, height);
   activeProg->unbind();
 
   MV->popMatrix();
@@ -464,7 +480,7 @@ static void render() {
 
     // Compute the light position in top-down coordinates:
     glm::vec4 topDownLightPos =
-        TOPDOWNMV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
+        TOPDOWNMV->topMatrix() * glm::vec4(lights[0]->pos, 1.0f);
     // glUniform3f(activeProg->getUniform("lightPos"), topDownLightPos.x,
     // topDownLightPos.y, topDownLightPos.z);
     glUniform3fv(activeProg->getUniform("lightPos"), 1,
