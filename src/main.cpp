@@ -196,6 +196,7 @@ static void init() {
 
   createShaders(RESOURCE_DIR, programs);
   createMaterials(materials);
+  createSceneObjects(objects, RESOURCE_DIR);
 
   text.Init(RESOURCE_DIR + "JetBrainsMonoNerdFontMono-Italic.ttf", 24,
             programs[4]);
@@ -256,6 +257,7 @@ static void init() {
   std::shared_ptr<Light> lightSourceOutdoor = std::make_shared<Light>(
       glm::vec3(0.0f, 40.0f, -20.0f), glm::vec3(1.0f, 1.0f, 1.0f));
   lights.push_back(lightSourceFloorThree);
+  lights.push_back(lightSourceOutdoor);
 
   GLSL::checkError(GET_FILE_LINE);
 }
@@ -362,6 +364,7 @@ static void render() {
                      glm::value_ptr(MV->topMatrix()));
   glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
                      glm::value_ptr(T));
+  double t = glfwGetTime();
   // GRIIIDS LINESSS
   drawGridLines(activeProg, P, MV, T);
   activeProg->unbind();
@@ -417,15 +420,30 @@ static void render() {
               activeMaterial->getMaterialKS().y,
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
-  glUniform1i(activeProg->getUniform("isBullet"), 1); // yes is bullet
-  // compute & upload normalMatrix
-  glm::mat4 M = MV->topMatrix();
-  glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(M)));
-  glUniformMatrix3fv(activeProg->getUniform("normalMatrix"), 1, GL_FALSE,
-                     glm::value_ptr(normalMatrix));
   drawBullets(activeProg, P, MV, deltaTime, bulletManager, structures);
-  glUniform1i(activeProg->getUniform("isBullet"),
-              0); // no, all bullets now rendered
+  activeProg->unbind();
+
+  activeProg = programs[5];
+  activeMaterial = materials[1];
+  activeProg->bind();
+  glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
+                     glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
+                     glm::value_ptr(MV->topMatrix()));
+  glUniform3f(activeProg->getUniform("ke"), activeMaterial->getMaterialKE().x,
+              activeMaterial->getMaterialKE().y,
+              activeMaterial->getMaterialKE().z);
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
+              activeMaterial->getMaterialKD().z);
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
+              activeMaterial->getMaterialKS().z);
+  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
+  glUniform3fv(activeProg->getUniform("lightsPos"), lights.size(),
+               glm::value_ptr(viewLightPositions[0]));
+  glUniform3fv(activeProg->getUniform("lightsColor"), lights.size(),
+               glm::value_ptr(lightColors[0]));
   drawBunnies(activeProg, P, MV, lights, viewLightPositions, lightColors,
               activeMaterial, materials, bunnies, width, height);
   activeProg->unbind();

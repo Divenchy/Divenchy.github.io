@@ -152,6 +152,8 @@ void Shape::init() {
 }
 
 void Shape::draw(const shared_ptr<Program> prog) const {
+  glBindVertexArray(vao);
+
   // debugging
   GLint cur = 0;
   glGetIntegerv(GL_CURRENT_PROGRAM, &cur);

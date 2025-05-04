@@ -136,6 +136,7 @@ inline void drawBunnies(std::shared_ptr<Program> &activeProg,
                         std::vector<std::shared_ptr<Material>> &materials,
                         std::vector<std::shared_ptr<Object>> &bunnies,
                         int width, int height) {
+  // std::cout << "Drawing " << bunnies.size() << " bunnies\n";
   for (auto &bunny : bunnies) {
     bunny->drawObject(P, MV, activeProg, activeMaterial);
   }
@@ -302,8 +303,9 @@ inline void initBunnies(std::vector<std::shared_ptr<Object>> &bunnies,
   for (int i = 0; i < 8; i++) {
     std::shared_ptr<Object> bunnyTarget = std::make_shared<Object>(
         bunny, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), glm::vec3(1.0f), 0.0f);
+    bunnyTarget->setScale(glm::vec3(1.0f));
     bunnies.push_back(bunnyTarget);
   }
   // Now move bunnies to their locations
-  bunnies[0]->setTranslation(glm::vec3(20.0f, 40.0f, 20.0f));
+  bunnies[0]->setTranslation(glm::vec3(20.0f, 35.0f, 20.0f));
 }

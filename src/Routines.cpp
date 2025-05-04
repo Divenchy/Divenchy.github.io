@@ -177,7 +177,6 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProgNoTexture->addUniform("lightsPos");
   blingProgNoTexture->addUniform("lightsColor");
   blingProgNoTexture->addUniform("isBullet");
-  blingProg->addUniform("normalMatrix"); // New uniform for transforming normals
   blingProgNoTexture->addAttribute("aInstMat0");
   blingProgNoTexture->addAttribute("aInstMat1");
   blingProgNoTexture->addAttribute("aInstMat2");
@@ -205,6 +204,25 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   TextShader->addUniform("textColor");
   TextShader->addUniform("projection");
   programs.push_back(TextShader);
+
+  std::shared_ptr<Program> blingClassic = make_shared<Program>();
+  blingClassic->setShaderNames(RESOURCE_DIR + "bling_classic_vert.glsl",
+                               RESOURCE_DIR +
+                                   "bling_phong_frag_mult_lights_orig.glsl");
+  blingClassic->setVerbose(true);
+  blingClassic->init();
+  blingClassic->addUniform("MV");
+  blingClassic->addUniform("P");
+  blingClassic->addAttribute("aPos");
+  blingClassic->addAttribute("aNor");
+  blingClassic->addUniform("lightsPos");
+  blingClassic->addUniform("lightsColor");
+  blingClassic->addUniform("ke");
+  blingClassic->addUniform("kd");
+  blingClassic->addUniform("ks");
+  blingClassic->addUniform("s");
+  blingClassic->setVerbose(false);
+  programs.push_back(blingClassic);
 }
 
 // Help from ChatGPT for reasoning
