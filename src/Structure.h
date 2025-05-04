@@ -21,6 +21,7 @@ private:
   glm::vec3 center;
   std::vector<std::shared_ptr<Particle>> particles;
   std::vector<std::shared_ptr<Spring>> springs;
+  bool fracturable = true;
 
   // For transforms
   glm::mat4 worldXform = glm::mat4(1.0f);
@@ -79,6 +80,9 @@ public:
   std::shared_ptr<Shape> getMesh() { return this->cubeMesh; };
 
   std::vector<FreeCube> getFreeCubes() { return this->freeCubes; };
+
+  bool getFracturable() { return this->fracturable; };
+  void setFracturable(bool isFrac) { this->fracturable = isFrac; };
 
   std::vector<std::shared_ptr<Particle>> getParticleArray() {
     return this->particles;
@@ -180,7 +184,6 @@ public:
   };
 
   std::vector<int> collisionSphere(const glm::vec3 &center, float radius) {
-
     std::vector<int> hits;
     for (size_t k = 0; k < modelMatsStatic.size(); ++k) {
       glm::vec3 cubePos = glm::vec3(modelMatsStatic[k][3]);
@@ -243,7 +246,7 @@ public:
       if (pMax.y <= cMin.y)
         continue;
       // 2) if your slab is completely above this cube, skip it (optional)
-      if (pMin.y >= cMax.y)
+      if (pMin.y > cMax.y)
         continue;
 
       // 3) now do the XZ overlap test

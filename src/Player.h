@@ -30,10 +30,13 @@ public:
     this->armament = std::make_shared<Armament>();
   };
 
+  std::shared_ptr<Armament> getArmament() { return this->armament; };
+
   void shoot() {
     glm::vec3 bulletPos =
         playerPOV->getPosition() + playerPOV->getForward() * 1.0f;
-    glm::vec3 bulletVelVec = playerPOV->getForward() * 10.0f;
+    bulletPos.y += 1.0f;
+    glm::vec3 bulletVelVec = playerPOV->getForward() * 35.0f;
     auto req = armament->fireArmament(bulletPos, bulletVelVec,
                                       1); // 1 for piercing, 0 for ricochet
     if (req) {
@@ -115,6 +118,7 @@ public:
       }
     }
 
+    // Horiz
     if (!blocked) {
       // no obstacle: commit
       pos.x = candidate.x;
@@ -153,4 +157,6 @@ public:
     // finally commit
     playerPOV->setPosition(pos);
   }
+
+  void setPlayerPos(glm::vec3 pos) { playerPOV->setPosition(pos); };
 };

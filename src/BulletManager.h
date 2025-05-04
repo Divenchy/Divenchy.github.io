@@ -57,7 +57,7 @@ public:
       // Collison test
       bool bulletKilled = false;
       for (auto structure : structures) {
-        float radius = 1.0f; // bullet radius
+        float radius = 0.5f; // bullet radius
         auto hits = structure->collisionSphere(it->position, radius);
 
         if (!hits.empty()) {
@@ -65,8 +65,10 @@ public:
           // kill bullet if PIERCING and has collided
           std::sort(hits.begin(), hits.end(), std::greater<int>());
           if (it->type == BulletType::PIERCING) {
-            for (int idx : hits) {
-              structure->fracturedCube(idx, it->position, it->velocity);
+            if (structure->getFracturable()) {
+              for (int idx : hits) {
+                structure->fracturedCube(idx, it->position, it->velocity);
+              }
             }
             // kill the bullet
             it = bullets.erase(it);
@@ -93,8 +95,9 @@ public:
         continue;
       } else {
         // still alive
-        modelMatsStatic.push_back(
-            glm::translate(glm::mat4(1.0f), it->position));
+        glm::mat4 M = glm::translate(glm::mat4(1.0f), glm::vec3(it->position));
+        M = M * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)); // half‑size
+        modelMatsStatic.push_back(M);
         ++it;
       }
     }
@@ -106,6 +109,11 @@ public:
     if (modelMatsStatic.empty()) {
       return;
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    modelMatsStatic.size() * sizeof(glm::mat4),
+                    modelMatsStatic.data());
 
     glBindVertexArray(sphereMesh->getVAO());
 

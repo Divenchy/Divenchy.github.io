@@ -1,5 +1,7 @@
 #include "GLFW/glfw3.h"
+#include "TextRenderer.h"
 #include "glm/matrix.hpp"
+#include <iterator>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -21,6 +23,7 @@
 
 using namespace std;
 
+int width, height;
 GLFWwindow *window;         // Main application window
 string RESOURCE_DIR = "./"; // Where the resources are loaded from
 int TASK = 1;
@@ -35,9 +38,13 @@ glm::mat4 T(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
             glm::vec4(10.0f, 10.0f, 0.0f, 1.0f));
 // clang-format on
 
-// AUDIO
+// AUDIO / UI
 sf::Music music;
 bool isPlaying;
+TextRenderer text;
+glm::mat4 ortho;
+int NUM_BUNNIES = 4;
+bool updateTime = true;
 
 shared_ptr<Player> player;
 shared_ptr<Camera> camera;
@@ -50,8 +57,6 @@ shared_ptr<Shape> cubeMesh;
 shared_ptr<Shape> sphereMesh;
 shared_ptr<BulletManager> bulletManager;
 std::vector<shared_ptr<Structure>> structures;
-shared_ptr<Structure> wall;
-shared_ptr<Structure> wallTwo;
 
 // Textures
 shared_ptr<Texture> wallTex;
@@ -179,6 +184,7 @@ void musicToggle() {
 // If the window is resized, capture the new size and reset the viewport
 static void resize_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
+  ortho = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
 }
 
 // This function is called once to initialize the scene and OpenGL
@@ -187,13 +193,16 @@ static void init() {
   glfwSetTime(0.0);
 
   // Set background color.
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   // Enable z-buffer test.
   glEnable(GL_DEPTH_TEST);
 
   createShaders(RESOURCE_DIR, programs);
   createMaterials(materials);
 
+  text.Init(RESOURCE_DIR + "JetBrainsMonoNerdFontMono-Italic.ttf", 24,
+            programs[4]);
+  // For text
   shaderIndex = 0;
   materialIndex = 0;
 
@@ -233,14 +242,12 @@ static void init() {
 
   bulletManager = make_shared<BulletManager>(sphereMesh);
   player = make_shared<Player>(camera, bulletManager);
-  std::shared_ptr<Armament> pp_919 = make_shared<Armament>(50, 50);
+  std::shared_ptr<Armament> pp_919 = make_shared<Armament>(100, 100);
   player->setWeapon(pp_919); // For more ammo
-  // Create structure
-  wall = make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(3.0f, 0.0f, 0.0f));
-  wallTwo = make_shared<Wall>(cubeMesh, 7, 2, glm::vec3(0.0f, 0.0f, 0.0f));
-  structures.push_back(wall);
-  structures.push_back(wallTwo);
-  structures[1]->rotate(glm::radians(90.0f), GLM_AXIS_Y);
+  player->setPlayerPos(glm::vec3(20.0f, 40.0f, 20.0f));
+  // Create structures
+  initFloorOne(structures, cubeMesh);
+
   lights.push_back(lightSource);
   lights.push_back(lightSourceTwo);
 
@@ -265,6 +272,31 @@ static void render() {
   } else {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
+
+  // Text data
+  char timerBuf[32];
+  if (updateTime) {
+    double e = glfwGetTime(); // seconds since glfwInit
+    int hours = (int)e / 3600;
+    int minutes = ((int)e % 3600) / 60;
+    int seconds = (int)e % 60;
+    int millis = (int)((e - floor(e)) * 1000.0);
+    sprintf(timerBuf, "%02d:%02d:%02d.%03d", hours, minutes, seconds, millis);
+  }
+
+  // bunnies
+  char bunniesBuf[32];
+  sprintf(bunniesBuf, "Bunnies left: %d", NUM_BUNNIES);
+
+  if (NUM_BUNNIES <= 0) {
+    updateTime = false;
+  }
+
+  // armament ammunition
+  char armamentBuf[48];
+  auto [piercingAmmo, ricochetAmmo] = player->getArmament()->getAmmoLeft();
+  sprintf(armamentBuf, "[Ammo]  Piercing: %d   Ricochet: %d", piercingAmmo,
+          ricochetAmmo);
 
   // Get current frame buffer size.
   int width, height;
@@ -295,10 +327,28 @@ static void render() {
   glm::vec4 lightPosCamSpace =
       MV->topMatrix() * glm::vec4(lightSource->pos, 1.0f);
 
-  shaderIndex = 3;
+  shaderIndex = 1;
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
 
+  // draw it in white at top left
+  activeProg = programs[4];
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  activeProg->bind();
+  glUniformMatrix4fv(
+      activeProg->getUniform("projection"), 1, GL_FALSE,
+      glm::value_ptr(glm::ortho(0.0f, float(width), 0.0f, float(height))));
+  glUniform1i(activeProg->getUniform("text"), 0);
+  text.RenderText(timerBuf, 10.0f, height - 30.0f, 1.0f,
+                  glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
+  text.RenderText(bunniesBuf, 10.0f, height - 60.0f, 1.0f,
+                  glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
+  text.RenderText(armamentBuf, 10.0f, height - 90.0f, 1.0f,
+                  glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
+  activeProg->unbind();
+
+  activeProg = programs[1];
   activeProg->bind();
   glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
                      glm::value_ptr(P->topMatrix()));
@@ -314,15 +364,53 @@ static void render() {
   shaderIndex = 0;
   activeProg = programs[shaderIndex];
   activeProg->bind();
+  // Set light position uniform on the active program
+  // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
+  glm::mat4 viewMatrix = MV->topMatrix();
+  std::vector<glm::vec3> viewLightPositions, lightColors;
+  viewLightPositions.resize(lights.size());
+  lightColors.resize(lights.size());
+  for (size_t i = 0; i < lights.size(); i++) {
+    // Transform the world-space light position into view space.
+    glm::vec4 viewPos = viewMatrix * glm::vec4(lights[i]->pos, 1.0f);
+    viewLightPositions[i] = glm::vec3(viewPos);
+    lightColors[i] = lights[i]->color;
+  }
   float bricksPerUnit = 0.1f; // i.e. 2 bricks per 1m
   GLint ts = activeProg->getUniform("tileScale");
   glUniform1f(ts, bricksPerUnit);
-  drawLevel(activeProg, P, MV, T, lights, activeMaterial, materials, structures,
-            textures, width, height);
+  drawLevel(activeProg, P, MV, T, lights, viewLightPositions, lightColors,
+            activeMaterial, materials, structures, textures, width, height);
   activeProg->unbind();
 
   // Bullets
+  // Switch to textureless bling phong rendering
+  activeProg = programs[3];
+  activeMaterial = materials[1];
   activeProg->bind();
+
+  GLint uLP = activeProg->getUniform("lightsPos");
+  GLint uLC = activeProg->getUniform("lightsColor");
+  GLint uP = activeProg->getUniform("P");
+  GLint uM = activeProg->getUniform("MV");
+
+  // upload the same P and MV you used for your scene objects
+  glUniformMatrix4fv(uP, 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
+  glUniformMatrix4fv(uM, 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+
+  // assume viewLightPositions & lightColors are std::vector<glm::vec3> of size
+  glUniform3fv(uLP, lights.size(), glm::value_ptr(viewLightPositions[0]));
+  glUniform3fv(uLC, lights.size(), glm::value_ptr(lightColors[0]));
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+              activeMaterial->getMaterialKE().y,
+              activeMaterial->getMaterialKE().z);
+  glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
+              activeMaterial->getMaterialKD().y,
+              activeMaterial->getMaterialKD().z);
+  glUniform3f(activeProg->getUniform("ks"), activeMaterial->getMaterialKS().x,
+              activeMaterial->getMaterialKS().y,
+              activeMaterial->getMaterialKS().z);
+  glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
   drawBullets(activeProg, P, MV, deltaTime, bulletManager, structures);
   activeProg->unbind();
 
@@ -417,6 +505,7 @@ int main(int argc, char **argv) {
     glfwTerminate();
     return -1;
   }
+  glfwGetFramebufferSize(window, &width, &height);
   // Make the window's context current.
   glfwMakeContextCurrent(window);
   // Initialize GLEW.

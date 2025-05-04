@@ -22,15 +22,15 @@
 
 class Material {
 private:
-  glm::vec3 ka; // ambient
+  glm::vec3 ke; // emmisive
   glm::vec3 kd; // diffusion
   glm::vec3 ks; // specular
   float s;      // specular scale/strength
 
 public:
-  Material(const glm::vec3 &ka, const glm::vec3 &kd, const glm::vec3 &ks,
+  Material(const glm::vec3 &ke, const glm::vec3 &kd, const glm::vec3 &ks,
            float s);
-  glm::vec3 getMaterialKA();
+  glm::vec3 getMaterialKE();
   glm::vec3 getMaterialKD();
   glm::vec3 getMaterialKS();
   float getMaterialS();

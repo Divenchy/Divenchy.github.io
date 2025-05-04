@@ -1,6 +1,9 @@
 #include "BulletManager.h"
 #include "GLM_EIGEN_COMPATIBILITY_LAYER.h"
+#include "Platform.h"
 #include "Structure.h"
+#include "Wall.h"
+#include "common.h"
 #include <cassert>
 #include <cstring>
 #include <memory>
@@ -62,6 +65,8 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
                       std::shared_ptr<MatrixStack> &P,
                       std::shared_ptr<MatrixStack> &MV, glm::mat4 &T,
                       std::vector<std::shared_ptr<Light>> &lights,
+                      std::vector<glm::vec3> &viewLightPositions,
+                      std::vector<glm::vec3> &lightsColors,
                       std::shared_ptr<Material> &activeMaterial,
                       std::vector<std::shared_ptr<Material>> &materials,
                       std::vector<std::shared_ptr<Structure>> &structures,
@@ -76,29 +81,16 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
   glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
                      glm::value_ptr(T));
 
-  // Set light position uniform on the active program
-  // CONVERT LIGHT WORLD SPACE COORDS TO EYE SPACE COORDS
-  glm::mat4 viewMatrix = MV->topMatrix();
-  std::vector<glm::vec3> viewLightPositions, lightColors;
-  viewLightPositions.resize(lights.size());
-  lightColors.resize(lights.size());
-  for (size_t i = 0; i < lights.size(); i++) {
-    // Transform the world-space light position into view space.
-    glm::vec4 viewPos = viewMatrix * glm::vec4(lights[i]->pos, 1.0f);
-    viewLightPositions[i] = glm::vec3(viewPos);
-    lightColors[i] = lights[i]->color;
-  }
-
   // Now pass the transformed positions to the shader.
-  glUniform3fv(activeProg->getUniform("lightPos"), lights.size(),
+  glUniform3fv(activeProg->getUniform("lightsPos"), lights.size(),
                glm::value_ptr(viewLightPositions[0]));
-  glUniform3fv(activeProg->getUniform("lightColor"), lights.size(),
-               glm::value_ptr(lightColors[0]));
+  glUniform3fv(activeProg->getUniform("lightsColor"), lights.size(),
+               glm::value_ptr(lightsColors[0]));
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
-              activeMaterial->getMaterialKA().y,
-              activeMaterial->getMaterialKA().z);
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+              activeMaterial->getMaterialKE().y,
+              activeMaterial->getMaterialKE().z);
   glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
               activeMaterial->getMaterialKD().y,
               activeMaterial->getMaterialKD().z);
@@ -187,9 +179,9 @@ drawHUD(GLFWwindow *window, int width, int height,
               lightPosCamSpace.y, lightPosCamSpace.z);
 
   // Set material uniforms from activeMaterial
-  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKA().x,
-              activeMaterial->getMaterialKA().y,
-              activeMaterial->getMaterialKA().z);
+  glUniform3f(activeProg->getUniform("ka"), activeMaterial->getMaterialKE().x,
+              activeMaterial->getMaterialKE().y,
+              activeMaterial->getMaterialKE().z);
   glUniform3f(activeProg->getUniform("kd"), activeMaterial->getMaterialKD().x,
               activeMaterial->getMaterialKD().y,
               activeMaterial->getMaterialKD().z);
@@ -253,3 +245,37 @@ drawHUD(GLFWwindow *window, int width, int height,
   HUDP->popMatrix();
   // --- End HUD Rendering ---
 };
+
+// Levels
+inline void initFloorOne(std::vector<std::shared_ptr<Structure>> &structures,
+                         std::shared_ptr<Shape> &cubeMesh) {
+
+  std::shared_ptr<Structure> floorOne =
+      std::make_shared<Platform>(cubeMesh, 40, 40, glm::vec3(0.0f));
+  floorOne->setFracturable(false);
+  structures.push_back(floorOne);
+  std::shared_ptr<Structure> floorTwo = std::make_shared<Platform>(
+      cubeMesh, 40, 40, glm::vec3(0.0f, 15.0f, 0.0f));
+  structures.push_back(floorTwo);
+  std::shared_ptr<Structure> floorThree = std::make_shared<Platform>(
+      cubeMesh, 40, 40, glm::vec3(0.0f, 30.0f, 0.0f));
+  structures.push_back(floorThree);
+  std::shared_ptr<Structure> outerWallOne =
+      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f));
+  outerWallOne->setFracturable(false);
+  structures.push_back(outerWallOne);
+  std::shared_ptr<Structure> outerWallTwo =
+      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f, 0.0f, 40.0f));
+  outerWallTwo->setFracturable(false);
+  structures.push_back(outerWallTwo);
+  std::shared_ptr<Structure> outerWallThree =
+      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f, 0.0f, 0.0f));
+  outerWallThree->setFracturable(false);
+  outerWallThree->rotate(glm::radians(-90.0f), GLM_AXIS_Y);
+  structures.push_back(outerWallThree);
+  std::shared_ptr<Structure> outerWallFour =
+      std::make_shared<Wall>(cubeMesh, 40, 50, glm::vec3(0.0f, 0.0f, -40.0f));
+  outerWallFour->setFracturable(false);
+  outerWallFour->rotate(glm::radians(-90.0f), GLM_AXIS_Y);
+  structures.push_back(outerWallFour);
+}

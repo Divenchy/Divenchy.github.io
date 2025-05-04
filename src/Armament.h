@@ -54,4 +54,8 @@ public:
     }
     return std::nullopt; // no shot fired
   };
+
+  std::pair<int, int> getAmmoLeft() {
+    return {this->piercingAmmo, this->ricochetAmmo};
+  };
 };

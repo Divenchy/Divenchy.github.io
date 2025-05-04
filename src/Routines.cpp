@@ -114,8 +114,8 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   blingProg->addUniform("texture0");
   blingProg->addUniform("texture1");
   blingProg->addUniform("texture2");
-  blingProg->addUniform("lightPos");
-  blingProg->addUniform("lightColor");
+  blingProg->addUniform("lightsPos");
+  blingProg->addUniform("lightsColor");
   blingProg->addAttribute("aInstMat0");
   blingProg->addAttribute("aInstMat1");
   blingProg->addAttribute("aInstMat2");
@@ -166,23 +166,43 @@ void createShaders(string RESOURCE_DIR, vector<shared_ptr<Program>> &programs) {
   programs.push_back(progHUD);
 
   // Imported from lab 9
-  std::shared_ptr<Program> progTexture = make_shared<Program>();
-  progTexture->setShaderNames(RESOURCE_DIR + "bling_phong_vert_texture.glsl",
-                              RESOURCE_DIR + "bling_phong_frag_texture.glsl");
-  progTexture->setVerbose(true);
-  progTexture->init();
-  progTexture->addAttribute("aPos");
-  progTexture->addAttribute("aNor");
-  progTexture->addAttribute("aTex");
-  progTexture->addUniform("P");
-  progTexture->addUniform("MV");
-  progTexture->addUniform("T");
-  progTexture->addUniform("texture0");
-  progTexture->addUniform("texture1");
-  progTexture->addUniform("texture2");
-  progTexture->addUniform("useCloudTexture");
-  progTexture->addUniform("lightPos");
-  programs.push_back(progTexture);
+  std::shared_ptr<Program> blingProgNoTexture = make_shared<Program>();
+  blingProgNoTexture->setShaderNames(
+      RESOURCE_DIR + "bling_phong_vert_orig.glsl",
+      RESOURCE_DIR + "bling_phong_frag_mult_lights_orig.glsl");
+  blingProgNoTexture->setVerbose(true);
+  blingProgNoTexture->init();
+  blingProgNoTexture->addAttribute("aPos");
+  blingProgNoTexture->addAttribute("aNor");
+  blingProgNoTexture->addUniform("lightsPos");
+  blingProgNoTexture->addUniform("lightsColor");
+  blingProgNoTexture->addAttribute("aInstMat0");
+  blingProgNoTexture->addAttribute("aInstMat1");
+  blingProgNoTexture->addAttribute("aInstMat2");
+  blingProgNoTexture->addAttribute("aInstMat3");
+  blingProgNoTexture->addUniform("MV");
+  blingProgNoTexture->addUniform("P");
+  blingProgNoTexture->addUniform(
+      "normalMatrix"); // New uniform for transforming normals
+  blingProgNoTexture->addUniform("ke");
+  blingProgNoTexture->addUniform("kd");
+  blingProgNoTexture->addUniform("ks");
+  blingProgNoTexture->addUniform("t");
+  blingProgNoTexture->addUniform("s");
+  blingProgNoTexture->setVerbose(false);
+  programs.push_back(blingProgNoTexture);
+
+  // Shader for text rendering
+  std::shared_ptr<Program> TextShader = std::make_shared<Program>();
+  TextShader->setShaderNames(RESOURCE_DIR + "text_vert.glsl",
+                             RESOURCE_DIR + "text_frag.glsl");
+  TextShader->init();
+  TextShader->addAttribute("aPos");
+  TextShader->addAttribute("aTex");
+  TextShader->addUniform("text");
+  TextShader->addUniform("textColor");
+  TextShader->addUniform("projection");
+  programs.push_back(TextShader);
 }
 
 // Help from ChatGPT for reasoning
