@@ -125,8 +125,10 @@ public:
       glm::vec3 pos{(float)d.position.x(), (float)d.position.y(),
                     (float)d.position.z()};
 
-      // gravity
-      vel += glm::vec3(0.0f, -9.8f, 0.0f) * dt;
+      // gravity + air drag
+      float dragCoefficient = 0.9f;
+      vel += glm::vec3(0.0f, -30.8f, 0.0f) * dt;
+      vel *= 1.0f - dragCoefficient * dt;
       pos += vel * dt;
 
       // simple ground bounce
@@ -337,9 +339,9 @@ public:
     cc.velocity = glmVec3ToEigen(dir * blastStrength + bulletVelocity * 0.5f);
     cc.size = 1.0f;
     freeCubes.push_back(cc);
-    std::cout << "[fracture] freeCubes now = " << freeCubes.size()
-              << " (spawned at " << cubePos.x << "," << cubePos.y << ","
-              << cubePos.z << ")\n";
+    // std::cout << "[fracture] freeCubes now = " << freeCubes.size()
+    //           << " (spawned at " << cubePos.x << "," << cubePos.y << ","
+    //           << cubePos.z << ")\n";
   };
 
   // GETTERS and SETTERS
