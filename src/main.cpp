@@ -277,10 +277,10 @@ static void render() {
   }
 
   if (keyToggles[(unsigned)'r']) {
-    player->setArmamentMode(1);
+    player->setArmamentMode(0);
   }
   if (keyToggles[(unsigned)'p']) {
-    player->setArmamentMode(0);
+    player->setArmamentMode(1);
   }
 
   // Text data
