@@ -243,8 +243,10 @@ static void init() {
   player->setArmamentMode(1);
   // Create structures
   initOuterAndFloors(structures, cubeMesh);
-  initFloorThree(structures, cubeMesh);
-  initBunnies(bunnies, bunny);
+  initMaze(structures, cubeMesh, 30.0f);
+  initMaze(structures, cubeMesh, 15.0f);
+  initMaze(structures, cubeMesh, 0.0f);
+  initBunnies(bunnies, bunny, 31.0f);
   NUM_BUNNIES = bunnies.size();
 
   std::shared_ptr<Light> lightSourceFloorThree = std::make_shared<Light>(

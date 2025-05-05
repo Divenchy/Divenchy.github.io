@@ -275,15 +275,162 @@ initOuterAndFloors(std::vector<std::shared_ptr<Structure>> &structures,
   structures.push_back(outerWallFour);
 }
 
-inline void initFloorThree(std::vector<std::shared_ptr<Structure>> &structures,
-                           std::shared_ptr<Shape> &cubeMesh) {
+inline void initMaze(std::vector<std::shared_ptr<Structure>> &structures,
+                     std::shared_ptr<Shape> &cubeMesh, float Y) {
   std::shared_ptr<Structure> wallZero =
-      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, 30.0f, 20.0f));
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, Y, 20.0f));
   structures.push_back(wallZero);
+  std::shared_ptr<Structure> wallOne =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(10.0f, Y, 15.0f));
+  structures.push_back(wallOne);
+  std::shared_ptr<Structure> wallTwo =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 15.0f), 90.0f);
+  structures.push_back(wallTwo);
+  std::shared_ptr<Structure> wallThree =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 10.0f), 90.0f);
+  structures.push_back(wallThree);
+  std::shared_ptr<Structure> wallFour =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 20.0f), 90.0f);
+  structures.push_back(wallFour);
+  std::shared_ptr<Structure> wallFive =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 20.0f), 0.0f);
+  structures.push_back(wallFive);
+  std::shared_ptr<Structure> wallSix =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 20.0f), 0.0f);
+  structures.push_back(wallSix);
+  std::shared_ptr<Structure> wallSeven =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallSeven);
+  std::shared_ptr<Structure> wallEight =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(35.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallEight);
+  std::shared_ptr<Structure> wallNine =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallNine);
+  std::shared_ptr<Structure> wallTen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallTen);
+  std::shared_ptr<Structure> wallEleven =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallEleven);
+  std::shared_ptr<Structure> wallTwelve =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallTwelve);
+  std::shared_ptr<Structure> wallThirteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 35.0f), 90.0f);
+  structures.push_back(wallThirteen);
+  std::shared_ptr<Structure> wallFourteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 35.0f), 90.0f);
+  structures.push_back(wallFourteen);
+  std::shared_ptr<Structure> wallFifthteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 30.0f), 90.0f);
+  structures.push_back(wallFifthteen);
+  std::shared_ptr<Structure> wallSixteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 25.0f), 90.0f);
+  structures.push_back(wallSixteen);
+  std::shared_ptr<Structure> wallSeventeen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(10.0f, Y, 35.0f), 0.0f);
+  structures.push_back(wallSeventeen);
+  std::shared_ptr<Structure> wallEighteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallEighteen);
+  std::shared_ptr<Structure> wallNineteen =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(10.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallNineteen);
+  std::shared_ptr<Structure> wallTwenty =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallTwenty);
+  std::shared_ptr<Structure> wallTwentyOne =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallTwentyOne);
+  std::shared_ptr<Structure> wallTwentyTwo =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallTwentyTwo);
+  std::shared_ptr<Structure> wallTwentyThree =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, Y, 5.0f), 0.0f);
+  structures.push_back(wallTwentyThree);
+  std::shared_ptr<Structure> wallTwentyFour = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(20.0f, Y, 5.0f), -180.0f);
+  structures.push_back(wallTwentyFour);
+  std::shared_ptr<Structure> wallTwentyFive = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(20.0f, Y, 10.0f), -180.0f);
+  structures.push_back(wallTwentyFive);
+  std::shared_ptr<Structure> wallTwentySix = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(20.0f, Y, 15.0f), -180.0f);
+  structures.push_back(wallTwentySix);
+  std::shared_ptr<Structure> wallTwentySeven =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(10.0f, Y, 25.0f), 0.0f);
+  structures.push_back(wallTwentySeven);
+  std::shared_ptr<Structure> wallTwentyEight =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 25.0f), 0.0f);
+  structures.push_back(wallTwentyEight);
+  std::shared_ptr<Structure> wallTwentyNine =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 25.0f), 0.0f);
+  structures.push_back(wallTwentyNine);
+  std::shared_ptr<Structure> wallThirty =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(35.0f, Y, 5.0f), -90.0f);
+  structures.push_back(wallThirty);
+  std::shared_ptr<Structure> wallThirtyOne = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(35.0f, Y, 10.0f), -90.0f);
+  structures.push_back(wallThirtyOne);
+  std::shared_ptr<Structure> wallThirtyTwo =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 15.0f), 0.0f);
+  structures.push_back(wallThirtyTwo);
+  std::shared_ptr<Structure> wallThirtyThree =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 15.0f), 0.0f);
+  structures.push_back(wallThirtyThree);
+  std::shared_ptr<Structure> wallThirtyFour =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 5.0f), -90.0f);
+  structures.push_back(wallThirtyFour);
+  std::shared_ptr<Structure> wallThirtyFive =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 5.0f), -90.0f);
+  structures.push_back(wallThirtyFive);
+  std::shared_ptr<Structure> wallThirtySix = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(25.0f, Y, 10.0f), -90.0f);
+  structures.push_back(wallThirtySix);
+  std::shared_ptr<Structure> wallThirtySeven =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(30.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallThirtySeven);
+  std::shared_ptr<Structure> wallThirtyEight =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(25.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallThirtyEight);
+  std::shared_ptr<Structure> wallThirtyNine =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(20.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallThirtyNine);
+  std::shared_ptr<Structure> wallForty =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(15.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallForty);
+  std::shared_ptr<Structure> wallFortyOne =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(10.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallFortyOne);
+  std::shared_ptr<Structure> wallFortyTwo =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallFortyTwo);
+  std::shared_ptr<Structure> wallFortyThree =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(0.0f, Y, 30.0f), 0.0f);
+  structures.push_back(wallFortyThree);
+  std::shared_ptr<Structure> wallFortyFour = std::make_shared<Wall>(
+      cubeMesh, 5, 5, glm::vec3(20.0f, Y, 35.0f), -90.0f);
+  structures.push_back(wallFortyFour);
+  std::shared_ptr<Structure> wallFortyFive =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 15.0f), -90.0f);
+  structures.push_back(wallFortyFive);
+  std::shared_ptr<Structure> wallFortySix =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 20.0f), -90.0f);
+  structures.push_back(wallFortySix);
+  std::shared_ptr<Structure> wallFortySeven =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 25.0f), -90.0f);
+  structures.push_back(wallFortySeven);
+  std::shared_ptr<Structure> wallFortyEight =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 10.0f), -90.0f);
+  structures.push_back(wallFortyEight);
+  std::shared_ptr<Structure> wallFortyNine =
+      std::make_shared<Wall>(cubeMesh, 5, 5, glm::vec3(5.0f, Y, 15.0f), 0.0f);
+  structures.push_back(wallFortyNine);
 }
 
 inline void initBunnies(std::vector<std::shared_ptr<Bunny>> &bunnies,
-                        std::shared_ptr<Shape> &bunny) {
+                        std::shared_ptr<Shape> &bunny, int Y) {
 
   // Create bunnies
   for (int i = 0; i < 8; i++) {
@@ -293,14 +440,48 @@ inline void initBunnies(std::vector<std::shared_ptr<Bunny>> &bunnies,
     bunnies.push_back(bunnyTarget);
   }
   // Now move bunnies to their locations
-  bunnies[0]->setTranslation(glm::vec3(38.0f, 31.0f, 38.0f));
-  bunnies[1]->setTranslation(glm::vec3(2.0f, 31.0f, 2.0f));
-  bunnies[2]->setTranslation(glm::vec3(12.0f, 31.0f, 2.0f));
-  bunnies[3]->setTranslation(glm::vec3(20.0f, 31.0f, 10.0f));
-  bunnies[4]->setTranslation(glm::vec3(2.0f, 31.0f, 23.0f));
-  bunnies[5]->setTranslation(glm::vec3(32.0f, 31.0f, 12.0f));
-  bunnies[6]->setTranslation(glm::vec3(20.0f, 31.0f, 32.0f));
-  bunnies[7]->setTranslation(glm::vec3(2.0f, 31.0f, 32.0f));
+  bunnies[0]->setTranslation(glm::vec3(38.0f, Y, 38.0f));
+  bunnies[1]->setTranslation(glm::vec3(12.0f, Y, 14.0f));
+  bunnies[2]->setTranslation(glm::vec3(17.3f, Y, 6.5f));
+  bunnies[3]->setTranslation(glm::vec3(12.0f, Y, 2.0f));
+  bunnies[4]->setTranslation(glm::vec3(27.4f, Y, 32.8f));
+  bunnies[5]->setTranslation(glm::vec3(32.0f, Y, 12.0f));
+  bunnies[6]->setTranslation(glm::vec3(20.0f, Y, 32.0f));
+  bunnies[7]->setTranslation(glm::vec3(17.9f, Y, 17.2f));
+
+  float Y_new = Y - 15.0f;
+  for (int i = 0; i < 8; i++) {
+    std::shared_ptr<Bunny> bunnyTarget = std::make_shared<Bunny>(
+        bunny, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), glm::vec3(1.0f), 0.0f);
+    bunnyTarget->setScale(glm::vec3(1.0f));
+    bunnies.push_back(bunnyTarget);
+  }
+  // Now move bunnies to their locations
+  bunnies[8]->setTranslation(glm::vec3(38.0f, Y_new, 38.0f));
+  bunnies[9]->setTranslation(glm::vec3(12.0f, Y_new, 14.0f));
+  bunnies[10]->setTranslation(glm::vec3(17.3f, Y_new, 6.5f));
+  bunnies[11]->setTranslation(glm::vec3(12.0f, Y_new, 2.0f));
+  bunnies[12]->setTranslation(glm::vec3(27.4f, Y_new, 32.8f));
+  bunnies[13]->setTranslation(glm::vec3(32.0f, Y_new, 12.0f));
+  bunnies[14]->setTranslation(glm::vec3(20.0f, Y_new, 32.0f));
+  bunnies[15]->setTranslation(glm::vec3(17.9f, Y_new, 17.2f));
+
+  Y_new = Y_new - 15.0f;
+  for (int i = 0; i < 8; i++) {
+    std::shared_ptr<Bunny> bunnyTarget = std::make_shared<Bunny>(
+        bunny, glm::vec3(0.0f), 0.0f, glm::vec3(0.0f), glm::vec3(1.0f), 0.0f);
+    bunnyTarget->setScale(glm::vec3(1.0f));
+    bunnies.push_back(bunnyTarget);
+  }
+  // Now move bunnies to their locations
+  bunnies[16]->setTranslation(glm::vec3(38.0f, Y_new, 38.0f));
+  bunnies[17]->setTranslation(glm::vec3(12.0f, Y_new, 14.0f));
+  bunnies[18]->setTranslation(glm::vec3(17.3f, Y_new, 6.5f));
+  bunnies[19]->setTranslation(glm::vec3(12.0f, Y_new, 2.0f));
+  bunnies[20]->setTranslation(glm::vec3(27.4f, Y_new, 32.8f));
+  bunnies[21]->setTranslation(glm::vec3(32.0f, Y_new, 12.0f));
+  bunnies[22]->setTranslation(glm::vec3(20.0f, Y_new, 32.0f));
+  bunnies[23]->setTranslation(glm::vec3(17.9f, Y_new, 17.2f));
 }
 
 inline void bunnyCollisions(std::shared_ptr<BulletManager> &bulletManager,
