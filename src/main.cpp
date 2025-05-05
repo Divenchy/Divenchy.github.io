@@ -44,7 +44,8 @@ sf::Music music;
 bool isPlaying;
 TextRenderer text;
 glm::mat4 ortho;
-int NUM_BUNNIES = 4;
+int NUM_BUNNIES;
+static double frozenTime = 0.0;
 bool updateTime = true;
 
 shared_ptr<Player> player;
@@ -243,6 +244,7 @@ static void init() {
   initOuterAndFloors(structures, cubeMesh);
   initFloorThree(structures, cubeMesh);
   initBunnies(bunnies, bunny);
+  NUM_BUNNIES = bunnies.size();
 
   std::shared_ptr<Light> lightSourceFloorThree = std::make_shared<Light>(
       glm::vec3(20.0f, 40.0f, 20.0f), glm::vec3(1.0f, 0.9f, 0.85f));
@@ -276,13 +278,14 @@ static void render() {
   // Text data
   char timerBuf[32];
   if (updateTime) {
-    double e = glfwGetTime(); // seconds since glfwInit
-    int hours = (int)e / 3600;
-    int minutes = ((int)e % 3600) / 60;
-    int seconds = (int)e % 60;
-    int millis = (int)((e - floor(e)) * 1000.0);
-    sprintf(timerBuf, "%02d:%02d:%02d.%03d", hours, minutes, seconds, millis);
+    frozenTime = glfwGetTime();
   }
+  double e = frozenTime; // seconds since glfwInit
+  int hours = (int)e / 3600;
+  int minutes = ((int)e % 3600) / 60;
+  int seconds = (int)e % 60;
+  int millis = (int)((e - floor(e)) * 1000.0);
+  sprintf(timerBuf, "%02d:%02d:%02d.%03d", hours, minutes, seconds, millis);
 
   // bunnies
   char bunniesBuf[32];
@@ -322,10 +325,6 @@ static void render() {
   camera->applyViewMatrixFreeLook(MV);
 
   centerCam(MV);
-
-  glm::vec4 lightPosCamSpace =
-      MV->topMatrix() * glm::vec4(lights[0]->pos, 1.0f);
-
   shaderIndex = 1;
   shared_ptr<Program> activeProg = programs[shaderIndex];
   shared_ptr<Material> activeMaterial = materials[materialIndex];
@@ -355,7 +354,6 @@ static void render() {
                      glm::value_ptr(MV->topMatrix()));
   glUniformMatrix3fv(activeProg->getUniform("T"), 1, GL_FALSE,
                      glm::value_ptr(T));
-  double t = glfwGetTime();
   // GRIIIDS LINESSS
   drawGridLines(activeProg, P, MV, T);
   activeProg->unbind();
@@ -443,6 +441,8 @@ static void render() {
 
   MV->popMatrix();
   P->popMatrix();
+
+  drawReticle(width, height);
 
   GLSL::checkError(GET_FILE_LINE);
 }

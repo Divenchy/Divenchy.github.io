@@ -295,6 +295,12 @@ inline void initBunnies(std::vector<std::shared_ptr<Bunny>> &bunnies,
   // Now move bunnies to their locations
   bunnies[0]->setTranslation(glm::vec3(38.0f, 31.0f, 38.0f));
   bunnies[1]->setTranslation(glm::vec3(2.0f, 31.0f, 2.0f));
+  bunnies[2]->setTranslation(glm::vec3(12.0f, 31.0f, 2.0f));
+  bunnies[3]->setTranslation(glm::vec3(20.0f, 31.0f, 10.0f));
+  bunnies[4]->setTranslation(glm::vec3(2.0f, 31.0f, 23.0f));
+  bunnies[5]->setTranslation(glm::vec3(32.0f, 31.0f, 12.0f));
+  bunnies[6]->setTranslation(glm::vec3(20.0f, 31.0f, 32.0f));
+  bunnies[7]->setTranslation(glm::vec3(2.0f, 31.0f, 32.0f));
 }
 
 inline void bunnyCollisions(std::shared_ptr<BulletManager> &bulletManager,
@@ -319,4 +325,45 @@ inline void bunnyCollisions(std::shared_ptr<BulletManager> &bulletManager,
       }
     }
   }
+}
+
+inline void drawReticle(int width, int height) {
+
+  glDisable(GL_DEPTH_TEST);
+
+  // save current matrices
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(0.0, width,  // left, right
+          0.0, height, // bottom, top
+          -1.0, 1.0);  // near, far
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+
+  // parameters
+  float cx = width * 0.5f;  // screen center X
+  float cy = height * 0.5f; // screen center Y
+  float r = 20.0f;          // radius in pixels
+  const int segments = 64;  // how smooth the circle is
+
+  glColor3f(1.0f, 1.0f, 1.0f);
+  glBegin(GL_LINE_LOOP);
+  for (int i = 0; i < segments; ++i) {
+    float theta = 2.0f * 3.14159265f * float(i) / float(segments);
+    float x = cx + cosf(theta) * r;
+    float y = cy + sinf(theta) * r;
+    glVertex2f(x, y);
+  }
+  glEnd();
+
+  // restore
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glMatrixMode(GL_MODELVIEW);
+
+  glEnable(GL_DEPTH_TEST);
 }
