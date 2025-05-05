@@ -17,6 +17,7 @@ private:
   std::vector<glm::mat4> modelMatsStatic;
   std::vector<FreeCube> freeCubes; // Cubes that are now fractured
   GLuint instanceVBO;              // buffer for instance mats
+  GLuint debrisVBO = 0;
   // AKA origin of structure
   glm::vec3 center;
   std::vector<std::shared_ptr<Particle>> particles;
@@ -32,8 +33,14 @@ public:
     assert(cubeMesh->getType() == ShapeType::CUBE);
     // If is cube, generate instanceVBO
     glGenBuffers(1, &instanceVBO);
+    glGenBuffers(1, &debrisVBO);
   };
-  virtual ~Structure() = default;
+  ~Structure() {
+    if (instanceVBO)
+      glDeleteBuffers(1, &instanceVBO);
+    if (debrisVBO)
+      glDeleteBuffers(1, &debrisVBO);
+  }
 
   virtual void createStructure(std::shared_ptr<Shape> cubeMesh, int width,
                                int height, glm::vec3 center) = 0;
@@ -79,7 +86,7 @@ public:
   std::vector<glm::mat4> getModelMatsStatic() { return this->modelMatsStatic; };
   std::shared_ptr<Shape> getMesh() { return this->cubeMesh; };
 
-  std::vector<FreeCube> getFreeCubes() { return this->freeCubes; };
+  std::vector<FreeCube> &getFreeCubes() { return this->freeCubes; };
 
   bool getFracturable() { return this->fracturable; };
   void setFracturable(bool isFrac) { this->fracturable = isFrac; };
@@ -108,6 +115,108 @@ public:
     glBufferData(GL_ARRAY_BUFFER, modelMatsStatic.size() * sizeof(glm::mat4),
                  modelMatsStatic.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+  }
+
+  void updateDebris(float dt) {
+    for (auto &d : freeCubes) {
+      // unpack
+      glm::vec3 vel{(float)d.velocity.x(), (float)d.velocity.y(),
+                    (float)d.velocity.z()};
+      glm::vec3 pos{(float)d.position.x(), (float)d.position.y(),
+                    (float)d.position.z()};
+
+      // gravity
+      vel += glm::vec3(0.0f, -9.8f, 0.0f) * dt;
+      pos += vel * dt;
+
+      // simple ground bounce
+      if (pos.y < 0.0f) {
+        pos.y = 0.0f;
+        vel.y *= -0.4f;
+      }
+
+      // pack back
+      d.velocity = Eigen::Vector3d(vel.x, vel.y, vel.z);
+      d.position = Eigen::Vector3d(pos.x, pos.y, pos.z);
+    }
+  }
+
+  void renderDebris(const std::shared_ptr<Program> &prog) {
+    if (freeCubes.empty())
+      return;
+
+    // 1) build a temporary array of glm::mat4's from your FreeCube data:
+    std::vector<glm::mat4> debrisMats;
+    debrisMats.reserve(freeCubes.size());
+    for (auto &fc : freeCubes) {
+      glm::mat4 M = glm::translate(glm::mat4(1.0f),
+                                   glm::vec3(fc.position.x(), fc.position.y(),
+                                             fc.position.z())) *
+                    glm::scale(glm::mat4(1.0f), glm::vec3(fc.size));
+      debrisMats.push_back(M);
+    }
+
+    // 2) bind your cube VAO and per‐vertex attribs exactly like
+    // renderStructure:
+    glBindVertexArray(cubeMesh->getVAO());
+    int posLoc = prog->getAttribute("aPos");
+    glEnableVertexAttribArray(posLoc);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeMesh->getPosBufID());
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+    int norLoc = prog->getAttribute("aNor");
+    if (norLoc >= 0) {
+      glEnableVertexAttribArray(norLoc);
+      glBindBuffer(GL_ARRAY_BUFFER, cubeMesh->getNorBufID());
+      glVertexAttribPointer(norLoc, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+    }
+
+    int texLoc = prog->getAttribute("aTex");
+    if (texLoc >= 0 && cubeMesh->getTexBufID() != 0) {
+      glEnableVertexAttribArray(texLoc);
+      glBindBuffer(GL_ARRAY_BUFFER, cubeMesh->getTexBufID());
+      glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
+    }
+
+    // 3) upload debrisMats into debrisVBO
+    glBindBuffer(GL_ARRAY_BUFFER, debrisVBO);
+    glBufferData(GL_ARRAY_BUFFER, debrisMats.size() * sizeof(glm::mat4),
+                 debrisMats.data(), GL_DYNAMIC_DRAW);
+
+    // 4) hook it to aInstMat0..3 with divisor=1:
+    std::size_t vec4Size = sizeof(glm::vec4);
+    int matLoc[4] = {
+        prog->getAttribute("aInstMat0"), prog->getAttribute("aInstMat1"),
+        prog->getAttribute("aInstMat2"), prog->getAttribute("aInstMat3")};
+    for (int i = 0; i < 4; ++i) {
+      if (matLoc[i] < 0)
+        continue;
+      glEnableVertexAttribArray(matLoc[i]);
+      glVertexAttribPointer(matLoc[i], 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                            (void *)(i * vec4Size));
+      glVertexAttribDivisor(matLoc[i], 1);
+    }
+
+    // 5) finally draw instanced
+    GLsizei instanceCount = (GLsizei)debrisMats.size();
+    glDrawArraysInstanced(GL_TRIANGLES, 0, cubeMesh->getVertexCount(),
+                          instanceCount);
+
+    // 6) cleanup
+    for (int i = 0; i < 4; ++i) {
+      if (matLoc[i] >= 0) {
+        glDisableVertexAttribArray(matLoc[i]);
+        glVertexAttribDivisor(matLoc[i], 0);
+      }
+    }
+    if (texLoc >= 0)
+      glDisableVertexAttribArray(texLoc);
+    glDisableVertexAttribArray(posLoc);
+    if (norLoc >= 0)
+      glDisableVertexAttribArray(norLoc);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
   }
 
   void renderStructure(const std::shared_ptr<Program> prog) {
@@ -228,6 +337,9 @@ public:
     cc.velocity = glmVec3ToEigen(dir * blastStrength + bulletVelocity * 0.5f);
     cc.size = 1.0f;
     freeCubes.push_back(cc);
+    std::cout << "[fracture] freeCubes now = " << freeCubes.size()
+              << " (spawned at " << cubePos.x << "," << cubePos.y << ","
+              << cubePos.z << ")\n";
   };
 
   // GETTERS and SETTERS

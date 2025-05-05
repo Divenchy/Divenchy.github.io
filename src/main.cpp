@@ -380,7 +380,8 @@ static void render() {
   GLint ts = activeProg->getUniform("tileScale");
   glUniform1f(ts, bricksPerUnit);
   drawLevel(activeProg, P, MV, T, lights, viewLightPositions, lightColors,
-            activeMaterial, materials, structures, textures, width, height);
+            activeMaterial, materials, structures, textures, width, height,
+            deltaTime);
   activeProg->unbind();
 
   // Bullets
@@ -412,6 +413,7 @@ static void render() {
               activeMaterial->getMaterialKS().z);
   glUniform1f(activeProg->getUniform("s"), activeMaterial->getMaterialS());
   drawBullets(activeProg, P, MV, deltaTime, bulletManager, structures);
+
   activeProg->unbind();
 
   activeProg = programs[5];

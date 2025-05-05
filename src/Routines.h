@@ -71,7 +71,7 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
                       std::vector<std::shared_ptr<Material>> &materials,
                       std::vector<std::shared_ptr<Structure>> &structures,
                       std::vector<std::shared_ptr<Texture>> &textures,
-                      int width, int height) {
+                      int width, int height, float dt) {
 
   // Back to original shader
   glUniformMatrix4fv(activeProg->getUniform("P"), 1, GL_FALSE,
@@ -102,6 +102,8 @@ inline void drawLevel(std::shared_ptr<Program> &activeProg,
   MV->pushMatrix();
   for (auto structure : structures) {
     structure->renderStructure(activeProg);
+    structure->updateDebris(dt);
+    structure->renderDebris(activeProg);
   }
   textures[0]->unbind();
   MV->popMatrix();
@@ -143,35 +145,6 @@ inline void drawBunnies(std::shared_ptr<Program> &activeProg,
     }
   }
 }
-
-inline void drawFreeCubes(std::shared_ptr<Program> &activeProg,
-                          std::shared_ptr<MatrixStack> &P,
-                          std::shared_ptr<MatrixStack> &MV, float &oldFrameTime,
-                          std::shared_ptr<BulletManager> &bulletManager,
-                          std::vector<std::shared_ptr<Structure>> &structures) {
-  for (auto structure : structures) {
-    auto freeCubes = structure->getFreeCubes();
-    for (auto &cc : freeCubes) {
-      cc.velocity +=
-          glmVec3ToEigen(glm::vec3(0.0f, -9.8f, 0.0f) * (float)STEPS_H);
-      cc.position += cc.velocity * STEPS_H;
-      // optional ground collision
-      if (cc.position.y() < 0) {
-        cc.position.y() = 0;
-        cc.velocity.y() *= -0.4; // bounce
-      }
-      // draw a cube at cc.position with size cc.size
-      MV->pushMatrix();
-      MV->translate(
-          glm::vec3(cc.position.x(), cc.position.y(), cc.position.z()));
-      MV->scale(cc.size);
-      glUniformMatrix4fv(activeProg->getUniform("MV"), 1, GL_FALSE,
-                         glm::value_ptr(MV->topMatrix()));
-      structure->getMesh()->draw(activeProg);
-      MV->popMatrix();
-    }
-  }
-};
 
 inline void
 drawHUD(GLFWwindow *window, int width, int height,
