@@ -309,6 +309,10 @@ static void render() {
   sprintf(armamentBuf, "[Ammo]  Piercing: %d   Ricochet: %d", piercingAmmo,
           ricochetAmmo);
 
+  char positionPlayerBuf[50];
+  sprintf(positionPlayerBuf, "[X] %f [Y] %f [Z] %f", player->getPlayerPos().x,
+          player->getPlayerPos().y, player->getPlayerPos().z);
+
   // Get current frame buffer size.
   int width, height;
   glfwGetFramebufferSize(window, &width, &height);
@@ -351,6 +355,8 @@ static void render() {
   text.RenderText(bunniesBuf, 10.0f, height - 60.0f, 1.0f,
                   glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
   text.RenderText(armamentBuf, 10.0f, height - 90.0f, 1.0f,
+                  glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
+  text.RenderText(positionPlayerBuf, 10.0f, height - 120.0f, 1.0f,
                   glm::vec3(1.0f, 1.0f, 1.0f), activeProg);
   activeProg->unbind();
 
@@ -513,13 +519,14 @@ int main(int argc, char **argv) {
   init();
 
   // Init music buffer
-  if (!music.openFromFile(RESOURCE_DIR + "WHAT.mp3")) {
+  if (!music.openFromFile(RESOURCE_DIR + "target_practice.wav")) {
     std::cerr << "Error loading music file" << std::endl;
     return -1;
   }
 
+  music.play();
   music.setLoopPoints({sf::milliseconds(0), sf::seconds(180)});
-  music.setVolume(50); // Set volume (0-100)
+  music.setVolume(30); // Set volume (0-100)
   // Loop until the user closes the window.
   while (!glfwWindowShouldClose(window)) {
     // Render scene.

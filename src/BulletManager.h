@@ -8,6 +8,7 @@ enum class BulletType { RICOCHET, PIERCING };
 struct Bullet {
   glm::vec3 position;
   glm::vec3 velocity;
+  int remainingBounces = 4;
   BulletType type = BulletType::RICOCHET;
   bool alive = false;
 };
@@ -47,12 +48,13 @@ public:
   void spawnBullet(glm::vec3 playerPOVPosition = glm::vec3(0.0f),
                    glm::vec3 velocity = glm::vec3(3.0f),
                    BulletType type = BulletType::PIERCING) {
-    bullets.push_back({playerPOVPosition, velocity, type, true});
+    bullets.push_back({playerPOVPosition, velocity, 4, type, true});
   };
 
   void update(float dt, std::vector<std::shared_ptr<Structure>> &structures) {
     modelMatsStatic.clear();
     for (auto it = bullets.begin(); it != bullets.end();) {
+      bool bouncedThisFrame = false;
       if (!it->alive) {
         it = bullets.erase(it);
         continue;
@@ -85,13 +87,65 @@ public:
             break; // out of the structures loop
           } else {
             // RICOCHET: reflect the velocity around the cube normal (optional)
-            // glm::vec3 normal = /* compute approximate normal at collision */;
-            // it->velocity = glm::reflect(it->velocity, normal);
+            for (int k : hits) {
+              // // 1) Grab the model matrix for cube k and compute its inverse
+              // (no scale):
+              glm::mat4 M = structure->getModelMatsStatic()[k];
+              glm::mat4 M_inv = glm::inverse(M);
+
+              // 2) Transform the bullet position into cube‐local coordinates:
+              glm::vec4 localPos4 = M_inv * glm::vec4(it->position, 1.0f);
+              glm::vec3 localPos = glm::vec3(localPos4) - glm::vec3(0.0f);
+              // since cubes are centered at the origin in local space
+
+              // 3) Decide which face you’re closest to:
+              glm::vec3 d = localPos;
+              float ax = fabs(d.x), ay = fabs(d.y), az = fabs(d.z);
+              glm::vec3 localNormal(0.0f);
+              if (ax > ay && ax > az)
+                localNormal.x = (d.x > 0.0f ? 1.0f : -1.0f);
+              else if (ay > ax && ay > az)
+                localNormal.y = (d.y > 0.0f ? 1.0f : -1.0f);
+              else
+                localNormal.z = (d.z > 0.0f ? 1.0f : -1.0f);
+
+              // 4) Rotate that normal back into world‐space (ignore
+              // translation):
+              glm::vec3 worldNormal = glm::mat3(M) * localNormal;
+              worldNormal = glm::normalize(worldNormal);
+              // wrote — reflect velocity:
+              glm::vec3 V = it->velocity;
+              glm::vec3 R = V - 2.0f * glm::dot(V, worldNormal) * worldNormal;
+              it->velocity = R * 0.8f;
+
+              // nudge out:
+              it->position += worldNormal * 0.01f;
+
+              // decrement bounce count & kill if exhausted:
+              it->remainingBounces--;
+              if (it->remainingBounces <= 0) {
+                it->alive = false;
+              }
+              bouncedThisFrame = true;
+              break; // only handle the first hit this frame
+            }
           }
         }
       }
 
       if (bulletKilled) {
+        continue;
+      }
+
+      if (bouncedThisFrame) {
+        if (it->alive) {
+          // push transform into modelMatsStatic …
+          glm::mat4 M =
+              glm::translate(glm::mat4(1.0f), glm::vec3(it->position));
+          M = M * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)); // half‑size
+          modelMatsStatic.push_back(M);
+          ++it;
+        }
         continue;
       }
 

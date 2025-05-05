@@ -161,4 +161,5 @@ public:
   }
 
   void setPlayerPos(glm::vec3 pos) { playerPOV->setPosition(pos); };
+  glm::vec3 getPlayerPos() { return playerPOV->getPosition(); };
 };
