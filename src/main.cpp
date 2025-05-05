@@ -240,6 +240,7 @@ static void init() {
   std::shared_ptr<Armament> pp_919 = make_shared<Armament>(100, 100);
   player->setWeapon(pp_919); // For more ammo
   player->setPlayerPos(glm::vec3(20.0f, 40.0f, 20.0f));
+  player->setArmamentMode(1);
   // Create structures
   initOuterAndFloors(structures, cubeMesh);
   initFloorThree(structures, cubeMesh);
@@ -269,10 +270,17 @@ static void render() {
   } else {
     glDisable(GL_CULL_FACE);
   }
-  if (keyToggles[(unsigned)'p']) {
+  if (keyToggles[(unsigned)'x']) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   } else {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
+
+  if (keyToggles[(unsigned)'r']) {
+    player->setArmamentMode(1);
+  }
+  if (keyToggles[(unsigned)'p']) {
+    player->setArmamentMode(0);
   }
 
   // Text data

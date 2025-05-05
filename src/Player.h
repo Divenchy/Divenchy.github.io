@@ -8,10 +8,10 @@ static constexpr float COLLISION_HEAD_Y = 1.8f; // eye level
 
 class Player {
 private:
-  int health;
   float speed = 12.0f;
   float vertVel = 0.0f;
   bool grounded = true;
+  int ARMAMENT_MODE = 0;
   static constexpr float JUMP_SPEED = 8.0f;
   std::shared_ptr<Camera> playerPOV;
   std::shared_ptr<Armament> armament;
@@ -19,14 +19,14 @@ private:
 
 public:
   // Default
-  Player() : health(100), speed(15.0f) {
+  Player() : speed(15.0f) {
     this->playerPOV = std::make_shared<Camera>();
     this->armament = std::make_shared<Armament>();
   };
 
   Player(std::shared_ptr<Camera> cam,
          std::shared_ptr<BulletManager> bulletManger)
-      : health(100), speed(15.0f), playerPOV(cam), bulletManager(bulletManger) {
+      : speed(15.0f), playerPOV(cam), bulletManager(bulletManger) {
     this->armament = std::make_shared<Armament>();
   };
 
@@ -37,13 +37,15 @@ public:
         playerPOV->getPosition() + playerPOV->getForward() * 1.0f;
     bulletPos.y += 1.0f;
     glm::vec3 bulletVelVec = playerPOV->getForward() * 35.0f;
-    auto req = armament->fireArmament(bulletPos, bulletVelVec,
-                                      1); // 1 for piercing, 0 for ricochet
+    auto req = armament->fireArmament(
+        bulletPos, bulletVelVec,
+        this->ARMAMENT_MODE); // 1 for piercing, 0 for ricochet
     if (req) {
       this->bulletManager->spawnBullet(req->pos, req->vel, req->type);
     };
   };
 
+  void setArmamentMode(int mode) { this->ARMAMENT_MODE = mode; };
   void setWeapon(std::shared_ptr<Armament> weapon) { this->armament = weapon; };
 
   bool wouldCollide(const glm::vec3 &candidate, const Structure &wall) const {
