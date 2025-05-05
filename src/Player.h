@@ -72,28 +72,34 @@ public:
     float nextY = pos.y + vertVel * dt;
 
     // land on any cube directly under your XZ footprint
-    bool hitGround = false;
-    float bestY = -1e9f;
-    for (auto &s : structures) {
-      for (auto &M : s->getModelMatsStatic()) {
-        glm::vec3 c = glm::vec3(M[3]);
-        if (pos.x + r > c.x - 0.5f && pos.x - r < c.x + 0.5f &&
-            pos.z + r > c.z - 0.5f && pos.z - r < c.z + 0.5f) {
-          float topY = c.y + 0.5f;
-          if (nextY <= topY && pos.y >= topY) {
-            hitGround = true;
-            bestY = std::max(bestY, topY);
-          }
-        }
-      }
-    }
-    if (hitGround) {
-      pos.y = bestY;
+    if (nextY <= COLLISION_FOOT_Y) {
+      pos.y = COLLISION_FOOT_Y; // lock at zero
       vertVel = 0.0f;
       grounded = true;
     } else {
-      pos.y = nextY;
-      grounded = false;
+      bool hitGround = false;
+      float bestY = -1e9f;
+      for (auto &s : structures) {
+        for (auto &M : s->getModelMatsStatic()) {
+          glm::vec3 c = glm::vec3(M[3]);
+          if (pos.x + r > c.x - 0.5f && pos.x - r < c.x + 0.5f &&
+              pos.z + r > c.z - 0.5f && pos.z - r < c.z + 0.5f) {
+            float topY = c.y + 0.5f;
+            if (nextY <= topY && pos.y >= topY) {
+              hitGround = true;
+              bestY = std::max(bestY, topY);
+            }
+          }
+        }
+      }
+      if (hitGround) {
+        pos.y = bestY;
+        vertVel = 0.0f;
+        grounded = true;
+      } else {
+        pos.y = nextY;
+        grounded = false;
+      }
     }
 
     // —— HORIZONTAL MOVEMENT ——

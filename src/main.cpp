@@ -239,7 +239,7 @@ static void init() {
   player = make_shared<Player>(camera, bulletManager);
   std::shared_ptr<Armament> pp_919 = make_shared<Armament>(100, 100);
   player->setWeapon(pp_919); // For more ammo
-  player->setPlayerPos(glm::vec3(20.0f, 40.0f, 20.0f));
+  player->setPlayerPos(glm::vec3(2.0f, 31.0f, 2.0f));
   player->setArmamentMode(1);
   // Create structures
   initOuterAndFloors(structures, cubeMesh);
