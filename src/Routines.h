@@ -273,6 +273,9 @@ initOuterAndFloors(std::vector<std::shared_ptr<Structure>> &structures,
   outerWallFour->setFracturable(false);
   outerWallFour->rotate(glm::radians(-90.0f), GLM_AXIS_Y);
   structures.push_back(outerWallFour);
+  std::shared_ptr<Structure> demoWall =
+      std::make_shared<Wall>(cubeMesh, 20, 20, glm::vec3(-20.0f, 0.0f, -20.0f));
+  structures.push_back(demoWall);
 }
 
 inline void initMaze(std::vector<std::shared_ptr<Structure>> &structures,

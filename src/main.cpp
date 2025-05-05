@@ -166,6 +166,18 @@ static void char_callback(GLFWwindow *window, unsigned int key) {
     camera->zoom(11.0f);
     break;
   }
+  case 'r': {
+    player->setArmamentMode(0);
+    break;
+  }
+  case 'p': {
+    player->setArmamentMode(1);
+    break;
+  }
+  case 'b': {
+    bunnies.clear();
+    NUM_BUNNIES = 0;
+  }
   }
 }
 
@@ -276,13 +288,6 @@ static void render() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   } else {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  }
-
-  if (keyToggles[(unsigned)'r']) {
-    player->setArmamentMode(0);
-  }
-  if (keyToggles[(unsigned)'p']) {
-    player->setArmamentMode(1);
   }
 
   // Text data
