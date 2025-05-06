@@ -3,7 +3,27 @@
 
 Leonardo Frias
 
-Game music original music created by me
+Game music is original music created by me
+
+# Description
+
+A time trial style game in which the player is challenged to find all bunnies and shooting them with a projectile as fast as possible in order to stop the timer.
+
+# CONTROLS
+
+wasd - move forward, left, backward, and right respectively
+
+f/right click - shoot projectile
+
+left click + drag - move camera
+
+space - jump
+
+r - enable ricochet mode
+
+p - enable piercing mode
+
+z/Z - zoom in/zoom out
 
 
 # LIBS
