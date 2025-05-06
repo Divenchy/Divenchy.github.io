@@ -21,7 +21,7 @@ Structures are generated with a call to Structure() which require a width a heig
 
 ### Drawing and generating fracturing
 
-As to calculate collisions and generate the appropiate models for drawing, a strucuture is generated through the creation of n = width * height number of staticModelMatrix which are used to draw the cubes as well as to create a "physical" cube. After collision, the cube in the collision is popped from this vector and transformed into a freeCube and added to that vector, which no longer hold any collision information and are simply drawn with the instance VAO. 
+As to calculate collisions and generate the appropiate models for drawing, a strucuture is generated through the creation of n = width * height number of staticModelMatrix which are used to draw the cubes as well as to create a "physical" cube. After collision, the cube in the collision is popped from this vector and transformed into a freeCube and added to that vector, which no longer hold any collision information and are simply drawn with the instance VBO. 
 
 
 ## PBD Physics
