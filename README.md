@@ -1,4 +1,5 @@
 # TargetTimeTrialGame
+![image](https://github.com/user-attachments/assets/2216b969-b378-4cc6-83c3-43be584b9481)
 
 Leonardo Frias
 
@@ -24,6 +25,13 @@ Game music original music created by me
   For some distros (like openSUSE which was used in making this project) FLAC version may be to recent for SFML, a dirty fix is to:
 ```
 ln {where you have your libs installed to}/libFLAC14.so {libs}/libFLAC12.so
+```
+
+# BUILDING
+
+First clone the repository and then in the root directory of the project:
+```
+mkdir build && cd build && cmake .. && make -j4
 ```
 
 # Citations
